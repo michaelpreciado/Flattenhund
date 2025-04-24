@@ -44,7 +44,7 @@ function initLeaderboard() {
 
 // Load leaderboard from localStorage or use dummy data
 function loadLeaderboard() {
-    const savedLeaderboard = localStorage.getItem('flatterhundLeaderboard');
+    const savedLeaderboard = localStorage.getItem('flattenhundLeaderboard');
     
     if (savedLeaderboard) {
         leaderboard = JSON.parse(savedLeaderboard);
@@ -57,7 +57,7 @@ function loadLeaderboard() {
 
 // Save leaderboard to localStorage
 function saveLeaderboardToStorage() {
-    localStorage.setItem('flatterhundLeaderboard', JSON.stringify(leaderboard));
+    localStorage.setItem('flattenhundLeaderboard', JSON.stringify(leaderboard));
 }
 
 // Render the leaderboard in the DOM
