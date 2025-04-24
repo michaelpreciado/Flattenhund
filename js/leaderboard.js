@@ -42,8 +42,25 @@ function initLeaderboard() {
     saveScoreButton.addEventListener('click', saveHighScore);
 }
 
-// Load leaderboard from localStorage or use dummy data
-function loadLeaderboard() {
+// Load leaderboard from Supabase or localStorage or use dummy data
+async function loadLeaderboard() {
+    try {
+        // Try to load from Supabase if available
+        if (window.supabaseHelpers) {
+            const supabaseData = await window.supabaseHelpers.getLeaderboard(10);
+            if (supabaseData && supabaseData.length > 0) {
+                leaderboard = supabaseData;
+                // Also save to localStorage as a cache
+                saveLeaderboardToStorage();
+                renderLeaderboard();
+                return;
+            }
+        }
+    } catch (err) {
+        console.error('Error loading from Supabase:', err);
+    }
+    
+    // Fall back to localStorage if Supabase fails or isn't available
     const savedLeaderboard = localStorage.getItem('flattenhundLeaderboard');
     
     if (savedLeaderboard) {
@@ -119,11 +136,21 @@ function checkHighScore(currentScore) {
 }
 
 // Save high score to leaderboard
-function saveHighScore() {
+async function saveHighScore() {
     const playerName = playerNameInput.value.trim().toUpperCase() || 'PLAYER';
     const currentScore = score; // Global score variable from game.js
+    const character = selectedCharacter || 'taz'; // Get the selected character
     
-    // Add new entry to leaderboard
+    try {
+        // Try to save to Supabase if available
+        if (window.supabaseHelpers) {
+            await window.supabaseHelpers.saveScore(playerName, currentScore, character);
+        }
+    } catch (err) {
+        console.error('Error saving to Supabase:', err);
+    }
+    
+    // Always save to localStorage as a backup
     leaderboard.push({
         name: playerName.substring(0, 10), // Limit to 10 characters
         score: currentScore
@@ -137,7 +164,7 @@ function saveHighScore() {
     saveLeaderboardToStorage();
     
     // Re-render the leaderboard
-    renderLeaderboard();
+    loadLeaderboard(); // Reload from Supabase to get the latest data
     
     // Hide the form
     newHighScoreForm.classList.add('hidden');
@@ -167,6 +194,9 @@ function updateGameEndWithLeaderboard() {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    initLeaderboard();
-    updateGameEndWithLeaderboard();
+    // Wait a short time to ensure Supabase is initialized
+    setTimeout(() => {
+        initLeaderboard();
+        updateGameEndWithLeaderboard();
+    }, 500);
 });

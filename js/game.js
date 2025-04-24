@@ -39,8 +39,12 @@ let mario = {
     boosting: false,  // Whether boost is active
     boostTimer: 0,    // Timer for boost duration
     boostCooldown: 0, // Cooldown timer before boost can be used again
-    holdTimer: 0      // Timer for tracking how long input is held
+    holdTimer: 0,     // Timer for tracking how long input is held
+    boostUsedCount: 0 // Counter for how many times boost was used
 };
+
+// Supabase session tracking
+let currentSession = null;
 
 // Particle system for smoke trail
 let particles = [];
@@ -120,7 +124,7 @@ function init() {
     ground.y = canvas.height - GROUND_HEIGHT;
     
     // Load high score from local storage
-    const savedHighScore = localStorage.getItem('flappyMarioHighScore');
+    const savedHighScore = localStorage.getItem('flattenhundHighScore');
     if (savedHighScore) {
         highScore = parseInt(savedHighScore);
         highScoreDisplay.textContent = highScore;
@@ -283,7 +287,7 @@ function loadAssets() {
 }
 
 // Start the game
-function startGame() {
+async function startGame() {
     // Default to Taz if none selected (should not happen)
     if (!selectedCharacter) selectedCharacter = 'taz';
     gameStarted = true;
@@ -292,6 +296,22 @@ function startGame() {
     gameOverScreen.style.display = 'none';
     score = 0;
     updateScore();
+    
+    // Reset boost usage counter
+    mario.boostUsedCount = 0;
+    
+    // Create a new game session in Supabase if available
+    try {
+        if (window.supabaseHelpers) {
+            currentSession = await window.supabaseHelpers.createGameSession(
+                selectedCharacter,
+                isDarkMode
+            );
+        }
+    } catch (err) {
+        console.error('Error creating game session:', err);
+        currentSession = null;
+    }
     
     // Only play sound effects, no continuous background music
     // Theme music is disabled by default
@@ -467,6 +487,8 @@ function update() {
         if (mario.holdTimer >= 20 && !mario.boosting && mario.boostCooldown <= 0) {
             // Activate boost
             activateBoost();
+            // Increment boost usage counter for analytics
+            mario.boostUsedCount++;
         }
     }
     
@@ -725,7 +747,7 @@ function checkCollision(rect1, rect2) {
 }
 
 // End the game with GTA-style WASTED effect
-function gameEnd() {
+async function gameEnd() {
     gameOver = true;
     
     // Apply GTA-style effects
@@ -747,7 +769,20 @@ function gameEnd() {
     // Update high score if needed
     if (score > highScore) {
         highScore = score;
-        localStorage.setItem('flappyMarioHighScore', highScore);
+        localStorage.setItem('flattenhundHighScore', highScore);
+    }
+    
+    // Update game session in Supabase if available
+    try {
+        if (window.supabaseHelpers && currentSession) {
+            await window.supabaseHelpers.updateGameSession(
+                currentSession.id,
+                score,
+                mario.boostUsedCount
+            );
+        }
+    } catch (err) {
+        console.error('Error updating game session:', err);
     }
     
     // Update DOM elements
