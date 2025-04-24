@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLATTERHUND</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    <!-- Pixel font preloading for faster rendering -->
+    <link rel="preload" href="assets/fonts/PressStart2P-Regular.ttf" as="font" type="font/ttf" crossorigin>
+</head>
+<body>
+    <div class="game-container">
+        <div class="start-screen" id="start-screen">
+            <h1>FLATTERHUND</h1>
+            <p>Choose your character:</p>
+            <div class="character-select">
+                <button class="character-btn" id="choose-taz">
+                    <img src="assets/images/taz.png" alt="Taz" class="character-img"><br>
+                    Taz
+                </button>
+                <button class="character-btn" id="choose-chloe">
+                    <img src="assets/images/chloe.png" alt="Chloe" class="character-img"><br>
+                    Chloe
+                </button>
+            </div>
+            <p>Press SPACE or tap to start and flap!</p>
+            <button id="start-button" disabled>Start Game</button>
+        </div>
+        
+        <canvas id="game-canvas"></canvas>
+        
+        <div class="game-over" id="game-over">
+            <div class="wasted-container">
+                <h2 class="wasted-text">WASTED</h2>
+            </div>
+            <p>Score: <span id="final-score">0</span></p>
+            <p>High Score: <span id="high-score">0</span></p>
+            <button id="restart-button">Play Again</button>
+            
+            <div class="leaderboard-container">
+                <h3 class="leaderboard-title">TOP SCORES</h3>
+                <div class="leaderboard">
+                    <div class="leaderboard-row header">
+                        <div class="rank">RANK</div>
+                        <div class="name">NAME</div>
+                        <div class="score">SCORE</div>
+                    </div>
+                    <div id="leaderboard-entries">
+                        <!-- Leaderboard entries will be inserted here -->
+                    </div>
+                </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>[build]
+  publish = "."
+  command = "echo 'No build command needed for static site'"
+
+[build.environment]
+  NODE_VERSION = "16"
+
+[dev]
+  framework = "#static"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200            </div>
+            
+            <div id="new-high-score-form" class="hidden">
+                <p>NEW HIGH SCORE!</p>
+                <div class="input-container">
+                    <label for="player-name">ENTER YOUR NAME:</label>
+                    <input type="text" id="player-name" maxlength="10" placeholder="MAX 10 CHARS">
+                </div>
+                <button id="save-score-button">SAVE SCORE</button>
+            </div>
+        </div>
+        
+        <div class="score-display">
+            <div class="score" id="score">0</div>
+        </div>
+        
+        <!-- Dark mode toggle button -->
+        <button id="dark-mode-toggle" class="mode-toggle" aria-label="Toggle dark mode">
+            <span class="moon-icon">🌙</span>
+            <span class="sun-icon">☀️</span>
+        </button>
+    </div>
+    
+    <!-- 8-bit sound system -->
+    <script src="js/sounds.js"></script>
+    <script src="js/8bit-music.js"></script>
+    <script src="js/drawing-functions.js"></script>
+    <script src="js/boost-functions.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/dark-mode.js"></script>
+    <script src="js/leaderboard.js"></script>
+    <script src="js/background-effects.js"></script>
+    
+    <!-- Pixel effect overlay (subtle scanlines) -->
+    <div class="crt-overlay"></div>
+</body>
+</html>
