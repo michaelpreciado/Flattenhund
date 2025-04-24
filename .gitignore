@@ -1,1 +1,27 @@
 .qodo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+
+# Netlify
+.netlify
+
+# Node modules (if you add npm in the future)
+node_modules/
+
+# Build files
+dist/
+build/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swodo

@@ -1,10 +1,19 @@
 // Supabase integration for Flattenhund
 // This file handles the connection to the Supabase backend
 
-// Initialize with your Supabase project details
-// These should be updated with your actual Supabase project URL and anon key
-const supabaseUrl = 'https://flattenhund.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsYXR0ZW5odW5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODIzNDU2NzgsImV4cCI6MTk5NzkyMTY3OH0.dummy_key';
+// Initialize with your Supabase project details from config.js
+// This keeps sensitive credentials out of your source code
+let supabaseUrl = 'https://rkvudsbyuzhyznetoum.supabase.co';
+let supabaseKey = ''; // Will be populated from config or Netlify environment variables
+
+// Load configuration from config.js if available
+function loadConfig() {
+  if (window.gameConfig && window.gameConfig.supabase) {
+    supabaseUrl = window.gameConfig.supabase.url;
+    supabaseKey = window.gameConfig.supabase.key;
+    console.log('Loaded Supabase configuration from config.js');
+  }
+}
 
 // Initialize the Supabase client
 let supabaseClient;
@@ -12,11 +21,14 @@ let supabaseClient;
 // Wait for the Supabase client to be available
 function initSupabase() {
   try {
+    // Load configuration first
+    loadConfig();
+    
     // Check if the supabase library is loaded
     if (typeof supabaseClient === 'undefined' && typeof supabase !== 'undefined') {
-      // Initialize the client
+      // Initialize the client using the createClient method
       supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-      console.log('Supabase client initialized');
+      console.log('Supabase client initialized with Netlify integration');
       return true;
     }
     return false;
