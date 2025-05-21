@@ -64,17 +64,17 @@ img.character-img {
     background: var(--ui-bg-color);
     border: 3px solid var(--ui-border-color);
     color: var(--text-color);
-    padding: 10px 15px; /* Increased padding */
+    padding: 8px 12px;
     font-size: 1rem;
     font-family: 'PressStart2P', 'Arial', sans-serif;
     cursor: pointer;
+    /* Remove rounded corners for 8-bit style */
     border-radius: 0;
+    /* Pixelated shadows instead of smooth ones */
     box-shadow: 2px 0 0 0 var(--ui-shadow-color), 0 2px 0 0 var(--ui-shadow-color), 2px 2px 0 0 var(--ui-shadow-color);
-    transition: transform 0.05s, background-color 0.2s, border-color 0.2s;
+    transition: transform 0.05s;
     outline: none;
     image-rendering: pixelated;
-    min-width: 100px; /* Ensure buttons are reasonably wide */
-    line-height: 1.5;
 }
 
 .character-btn.selected, .character-btn:focus {
@@ -95,7 +95,7 @@ button:disabled {
     border: none;
     padding: 10px 20px;
     margin: 10px 0;
-    font-size: 1.1rem; /* Slightly adjusted font size */
+    font-size: 1rem;
     cursor: pointer;
     /* Remove rounded corners for 8-bit style */
     border-radius: 0;
@@ -106,53 +106,23 @@ button:disabled {
 }
 
 body {
-    background-color: var(--sky-color);
+    background-color: var(--sky-color); /* Uses theme variable */
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     overflow: hidden;
-    transition: background-color 0.5s ease;
-    /* Add safe area padding for iOS devices */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    transition: background-color 0.5s ease; /* Smooth transition for theme change */
 }
 
 .game-container {
     position: relative;
-    /* Responsive sizing with aspect ratio 9:16 */
-    width: 100vw; 
-    height: calc(100vw * 16 / 9); /* Maintain 9:16 aspect ratio based on width */
-    max-width: 450px; /* Max width for larger phone screens / small tablets */
-    max-height: 800px; /* Max height based on 450px width and 9:16 ratio */
-    
-    /* Fallback for browsers that don't support env() or for desktop centering */
-    margin: auto; /* Center the container */
-
+    width: 360px;
+    height: 640px;
     border: 8px solid var(--ui-border-color);
     overflow: hidden;
-    background-color: var(--sky-color);
-    transition: background-color 0.5s ease, width 0.3s ease, height 0.3s ease;
-    box-shadow: 0 0 20px rgba(0,0,0,0.5); /* Add a subtle shadow for depth */
-}
-
-/* On larger screens (desktop), constrain the game size further and center it */
-@media (min-width: 600px) and (min-height: 700px) {
-    .game-container {
-        width: 360px; /* Fixed width for desktop-like views */
-        height: 640px; /* Fixed height for desktop-like views */
-        /* Override viewport units if you want fixed size on desktop */
-    }
-}
-
-/* Adjustments for very small screens if needed */
-@media (max-height: 500px) {
-    .game-container {
-        height: 100vh; /* Fill screen height */
-        width: calc(100vh * 9 / 16); /* Adjust width to maintain aspect ratio */
-    }
+    background-color: var(--sky-color); /* Uses theme variable */
+    transition: background-color 0.5s ease;
 }
 
 #game-canvas {
@@ -177,10 +147,9 @@ body {
     align-items: center;
     color: var(--text-color);
     z-index: 10;
-    padding: 5%; /* Use percentage for padding */
+    padding: 20px;
     text-align: center;
-    transition: color 0.5s ease, background-color 0.5s ease;
-    box-sizing: border-box; /* Ensure padding is included in width/height */
+    transition: color 0.5s ease;
 }
 
 .game-over {
@@ -195,20 +164,23 @@ h1, h2 {
 
 /* Special styling for the FLATTERHUND title */
 .start-screen h1 {
-    font-size: clamp(2rem, 8vw, 3.5rem); /* Responsive font size */
+    font-size: 2.5rem;
     color: #FFFFFF;
-    text-shadow: 3px 3px 0 #000000; /* Slightly reduced shadow for smaller sizes */
-    letter-spacing: 1px;
+    text-shadow: 4px 4px 0 #000000;
+    letter-spacing: 2px;
     text-transform: uppercase;
+    /* Pixelated text effect */
     image-rendering: pixelated;
+    /* Add a subtle pixel border */
     -webkit-text-stroke: 1px #000000;
-    border: 3px solid #FFFFFF;
-    border-radius: 0;
+    /* Pixel-perfect positioning */
+    padding: 4px 0;
+    /* Add a blocky, 8-bit style border effect */
+    border: 4px solid #FFFFFF;
+    border-radius: 0; /* Sharp corners for 8-bit style */
     background-color: rgba(0, 0, 0, 0.6);
-    padding: 8px 15px;
-    margin-bottom: clamp(20px, 5vh, 40px);
-    max-width: 90%;
-    word-break: break-word;
+    padding: 10px 20px;
+    margin-bottom: 30px;
 }
 
 h2 {
@@ -225,7 +197,7 @@ h2 {
 
 .wasted-text {
     font-family: 'PressStart2P', 'Arial', sans-serif;
-    font-size: clamp(2.5rem, 10vw, 4rem); /* Responsive font size */
+    font-size: 3rem;
     color: #ff0000;
     text-transform: uppercase;
     letter-spacing: 3px;
@@ -312,15 +284,14 @@ h2 {
 }
 
 #new-high-score-form {
-    margin-top: clamp(15px, 3vh, 25px);
-    padding: clamp(8px, 2vw, 15px);
-    background-color: rgba(0, 0, 0, 0.5);
-    border: 2px solid var(--ui-border-color);
-    width: 90%;
-    max-width: 320px; /* Slightly wider max for readability */
-    font-size: clamp(0.7rem, 2.2vw, 0.9rem);
+    margin-top: 10px;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 2px solid #FFFF00;
+    border-radius: 0; /* 8-bit style */
     color: #FFFF00;
     text-align: center;
+    width: 80%;
     margin-left: auto;
     margin-right: auto;
 }
@@ -398,17 +369,25 @@ button:hover {
 
 .score-display {
     position: absolute;
-    top: max(20px, env(safe-area-inset-top, 20px) + 10px); /* Position below notch */
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: clamp(1.8rem, 6vw, 2.5rem); /* Responsive font size */
-    color: var(--score-text, #FFFFFF);
-    text-shadow: 2px 2px 0 var(--score-box, #000000);
+    top: 20px;
+    left: 0;
+    width: 100%;
     z-index: 5;
-    background-color: rgba(0,0,0,0.3);
-    padding: 5px 15px;
+    display: flex;
+    justify-content: center;
+}
+
+.score {
+    background-color: #333333;
+    padding: 10px 20px;
     border-radius: 0;
-    border: 2px solid var(--ui-border-color);
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #FF6600;
+    border: 2px solid #000;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+    text-shadow: 2px 2px 0 #000;
+    image-rendering: pixelated;
 }
 
 /* Responsive design for smaller screens */
