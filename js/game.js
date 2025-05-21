@@ -1,22 +1,29 @@
 // Main game file for Flappy Mario
 // This file handles the game initialization, loop, and core mechanics
 
-// Game constants - modified for floatier feel with smooth forward movement
-const GRAVITY = 0.25; // Reduced gravity for longer air time
-const FLAP_FORCE = -6.0; // Gentler upward jump force
-const PIPE_SPEED = 1.8; // Slightly slower pipe speed to match floatier movement
-const FORWARD_LEAP = 0.8; // Forward acceleration on flap (smoother than instant leap)
-const MAX_FORWARD_SPEED = 2.5; // Maximum forward speed
-const FORWARD_DRAG = 0.95; // Gradual slowdown of forward movement
+// Game constants: all speed/acceleration values are in units per second (pixels/sec or pixels/sec^2)
+// Target FPS for conversion baseline was 60 FPS.
 
-// Boost mechanic constants
-const BOOST_FORCE = -10.0; // Stronger upward force during boost
-const BOOST_FORWARD = 3.0; // Stronger forward acceleration during boost (increased from 1.5)
-const BOOST_DURATION = 60; // Boost lasts for 60 frames (about 1 second)
-const BOOST_COOLDOWN = 180; // Cooldown period before boost can be used again (3 seconds)
-const BOOST_PARTICLES = 15; // Number of particles to create during boost
-const BOOST_HORIZONTAL_FORCE = 0.2; // Constant horizontal force during boost
-const PIPE_SPAWN_INTERVAL = 2200; // Even longer time between pipes (milliseconds)
+const GRAVITY_ACCEL = 0.25 * 60 * 60; // (0.25 px/frame^2 * 60 frames/sec * 60) = 900 px/sec^2
+const FLAP_VELOCITY_SET = -6.0 * 60; // (-6.0 px/frame * 60 frames/sec) = -360 px/sec (velocity is set on flap)
+const PIPE_SPEED_PPS = 1.8 * 60;     // (1.8 px/frame * 60 frames/sec) = 108 px/sec
+const FORWARD_LEAP_VEL_CHANGE_PPS = 0.8 * 60; // (0.8 px/frame * 60 frames/sec) = 48 px/sec (added to velocityX)
+const MAX_FORWARD_SPEED_PPS = 2.5 * 60;   // (2.5 px/frame * 60 frames/sec) = 150 px/sec
+const FORWARD_DRAG_FACTOR = 0.95;    // Multiplier per frame (will be scaled by deltaTime: Math.pow(FORWARD_DRAG_FACTOR, 60 * deltaTime))
+
+const FLOAT_DURATION_SECONDS = 15 / 60; // (15 frames / 60 fps) = 0.25 seconds
+const FLOAT_GRAVITY_MULTIPLIER = 0.7; // Gravity is multiplied by this during float
+
+const PARTICLE_MIN_SPEED_X_PPS = -3 * 60; // -180 px/sec
+const PARTICLE_MAX_SPEED_X_PPS = -1 * 60; // -60 px/sec
+const PARTICLE_MIN_SPEED_Y_PPS = -1 * 60; // -60 px/sec
+const PARTICLE_MAX_SPEED_Y_PPS = 1 * 60;  // 60 px/sec
+const PARTICLE_LIFE_DECAY_PER_SEC = 0.05 * 60; // 3.0 units of life per second (assuming life is 1.0 initially)
+
+const MARIO_ANIM_FPS = 0.2 * 60; // (0.2 anim_frames/game_frame * 60 game_frames/sec) = 12 animation frames/sec
+
+// Game constants continue
+const PIPE_SPAWN_INTERVAL = 2200; // Time between pipes (milliseconds) - already time-based
 const PIPE_GAP = 190; // Increased gap for easier gameplay
 const GROUND_HEIGHT = 120; // Taller ground section like in Flappy Bird
 const MARIO_WIDTH = 48; // Increased character size
@@ -33,14 +40,10 @@ let mario = {
     velocityX: 0,     // Horizontal velocity for smooth movement
     isFlapping: false,
     frameCount: 0,    // For animation frames
-    animationSpeed: 0.2,  // Controls animation speed
-    floatTimer: 0,    // Timer for floating effect
+    animationFrameCount: 0, // Accumulator for animation frames
+    floatTimer: 0,    // Timer for floating effect (in seconds)
     smoothRotation: 0, // Smoothly interpolated rotation value
-    boosting: false,  // Whether boost is active
-    boostTimer: 0,    // Timer for boost duration
-    boostCooldown: 0, // Cooldown timer before boost can be used again
-    holdTimer: 0,     // Timer for tracking how long input is held
-    boostUsedCount: 0 // Counter for how many times boost was used
+    holdTimer: 0     // Timer for tracking how long input is held
 };
 
 // Supabase session tracking
@@ -57,6 +60,7 @@ let gameStarted = false;
 let gameOver = false;
 let lastPipeSpawn = 0;
 let animationFrameId;
+let lastTime = 0;
 
 // 8-bit theme colors
 const COLORS_8BIT = {
@@ -87,7 +91,7 @@ let gameOverSoundContext;
 
 // DOM elements
 let startScreen, gameOverScreen, scoreDisplay, finalScoreDisplay, highScoreDisplay;
-let boostMeter; // Element to display boost cooldown
+// Game DOM elements
 
 // Dark mode support
 let isDarkMode = false;
@@ -103,8 +107,7 @@ function init() {
     finalScoreDisplay = document.getElementById('final-score');
     highScoreDisplay = document.getElementById('high-score');
     
-    // Create boost meter element
-    createBoostMeter();
+    // Game initialization
     
     // Set canvas dimensions
     canvas.width = canvas.parentElement.clientWidth;
@@ -297,8 +300,7 @@ async function startGame() {
     score = 0;
     updateScore();
     
-    // Reset boost usage counter
-    mario.boostUsedCount = 0;
+    // Game start setup
     
     // Create a new game session in Supabase if available
     try {
@@ -318,16 +320,18 @@ async function startGame() {
     
     // Reset mario position with a better head start
     mario.y = 230; // Start even higher in the air
-    mario.velocity = -3.0; // Stronger initial upward velocity
-    mario.velocityX = 0.5; // Small initial forward momentum
+    mario.velocity = -3.0 * 60; // Stronger initial upward velocity (-180 px/sec)
+    mario.velocityX = 0.5 * 60; // Small initial forward momentum (30 px/sec)
     mario.x = 80; // Reset X position
-    mario.floatTimer = 20; // Start with float timer active
+    mario.floatTimer = FLOAT_DURATION_SECONDS * 1.33; // Start with float timer active (a bit more than one flap's worth)
     mario.smoothRotation = 0; // Reset rotation
+    mario.animationFrameCount = 0;
     
     // Clear pipes
     pipes = [];
     
     // Start game loop
+    lastTime = performance.now(); // Initialize lastTime for deltaTime calculation
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
     }
@@ -343,9 +347,7 @@ function resetGame() {
     mario.smoothRotation = 0;
     mario.x = 80;
     mario.floatTimer = 0;
-    mario.boosting = false;
-    mario.boostTimer = 0;
-    mario.boostCooldown = 0;
+    // Reset player properties
     
     // Reset canvas effects
     canvas.style.filter = 'none';
@@ -355,15 +357,18 @@ function resetGame() {
     const gameContainer = document.querySelector('.game-container');
     gameContainer.style.boxShadow = 'none';
     
-    // Reset boost meter
-    updateBoostMeter();
+    // Prepare game restart
     
     startGame();
 }
 
 // Game loop
 function gameLoop() {
-    update();
+    const currentTime = performance.now();
+    const deltaTime = Math.min(0.1, (currentTime - lastTime) / 1000); // deltaTime in seconds, clamped to avoid large jumps
+    lastTime = currentTime;
+
+    update(deltaTime);
     render();
     
     if (!gameOver) {
@@ -373,30 +378,54 @@ function gameLoop() {
 
 // Make mario flap with floatier physics and smooth forward movement
 function flap() {
-    // Upward velocity with float effect
-    mario.velocity = mario.boosting ? BOOST_FORCE : FLAP_FORCE;
+    // Set vertical velocity and activate float timer
+    mario.velocity = FLAP_VELOCITY_SET;
     mario.isFlapping = true;
-    mario.floatTimer = 15; // Set float timer for extended air time
+    mario.floatTimer = FLOAT_DURATION_SECONDS; // Set float timer (in seconds)
     
-    // Add smooth forward acceleration instead of instant leap
-    mario.velocityX += mario.boosting ? BOOST_FORWARD : FORWARD_LEAP;
+    // Add forward velocity impulse
+    mario.velocityX += FORWARD_LEAP_VEL_CHANGE_PPS;
     
-    // Cap maximum forward speed (higher cap during boost)
-    const maxSpeed = mario.boosting ? MAX_FORWARD_SPEED * 1.5 : MAX_FORWARD_SPEED;
-    if (mario.velocityX > maxSpeed) {
-        mario.velocityX = maxSpeed;
+    // Cap maximum forward speed
+    if (mario.velocityX > MAX_FORWARD_SPEED_PPS) {
+        mario.velocityX = MAX_FORWARD_SPEED_PPS;
     }
+    if (mario.velocityX < -MAX_FORWARD_SPEED_PPS) { // Cap negative speed too if character can move backward
+        mario.velocityX = -MAX_FORWARD_SPEED_PPS;
+    }
+
+    // Create smoke particles immediately upon flapping
+    // The createSmokeTrail() call was already in update() based on mario.isFlapping, that's fine.
     
-    // Reset flap count after a short delay (allows for strategic double-taps)
-    setTimeout(() => {
-        mario.flapCount = 0;
-    }, 500);
+    // Reset flap count (if mario.flapCount is used elsewhere, seems it's not fully implemented yet)
+    // setTimeout(() => {
+    //     mario.flapCount = 0; 
+    // }, 500);
     
     // Use 8-bit audio if available
     if (window.eightBitAudio) {
         window.eightBitAudio.playJumpSound();
     } else {
         flapSoundContext = window.gameSounds.flap();
+    }
+}
+
+// Update smoke trail particles
+function updateParticles(deltaTime) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        
+        // Update position
+        p.x += p.speedX_pps * deltaTime;
+        p.y += p.speedY_pps * deltaTime;
+        
+        // Decrease life (opacity)
+        p.life -= PARTICLE_LIFE_DECAY_PER_SEC * deltaTime;
+        
+        // Remove dead particles
+        if (p.life <= 0) {
+            particles.splice(i, 1);
+        }
     }
 }
 
@@ -410,48 +439,11 @@ function createSmokeTrail() {
             x: mario.x,
             y: mario.y + mario.height/2 + (Math.random() * 10 - 5),
             size: 4 + Math.random() * 6,  // Pixelated small squares
-            speedX: -1 - Math.random() * 2,  // Move left (behind character)
-            speedY: Math.random() * 2 - 1,  // Slight up/down movement
+            speedX_pps: PARTICLE_MIN_SPEED_X_PPS + Math.random() * (PARTICLE_MAX_SPEED_X_PPS - PARTICLE_MIN_SPEED_X_PPS),
+            speedY_pps: PARTICLE_MIN_SPEED_Y_PPS + Math.random() * (PARTICLE_MAX_SPEED_Y_PPS - PARTICLE_MIN_SPEED_Y_PPS),
             life: 1.0,  // Full opacity to start
             color: Math.random() > 0.5 ? '#FFFFFF' : '#EEEEEE'  // White/light gray
         });
-    }
-}
-
-// Create simple smoke trail particles
-function createSmokeTrail() {
-    // Create 5-8 particles for each flap
-    const numParticles = 5 + Math.floor(Math.random() * 4);
-    
-    for (let i = 0; i < numParticles; i++) {
-        particles.push({
-            x: mario.x,
-            y: mario.y + mario.height/2 + (Math.random() * 10 - 5),
-            size: 4 + Math.random() * 6,  // Pixelated small squares
-            speedX: -1 - Math.random() * 2,  // Move left (behind character)
-            speedY: Math.random() * 2 - 1,  // Slight up/down movement
-            life: 1.0,  // Full opacity to start
-            color: Math.random() > 0.5 ? '#FFFFFF' : '#EEEEEE'  // White/light gray
-        });
-    }
-}
-
-// Update smoke trail particles
-function updateParticles() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        
-        // Update position
-        p.x += p.speedX;
-        p.y += p.speedY;
-        
-        // Decrease life (opacity)
-        p.life -= 0.05;
-        
-        // Remove dead particles
-        if (p.life <= 0) {
-            particles.splice(i, 1);
-        }
     }
 }
 
@@ -474,50 +466,27 @@ function renderParticles() {
 }
 
 // Update game state
-function update() {
+function update(deltaTime) {
     if (!gameStarted || gameOver) return;
     
     // Update mario with floatier physics and forward leap
     
-    // Check for hold-to-boost activation
+    // Simple hold timer tracking
     if (mario.holdTimer > 0) {
         mario.holdTimer++;
-        
-        // Activate boost after holding for 20 frames (about 1/3 second)
-        if (mario.holdTimer >= 20 && !mario.boosting && mario.boostCooldown <= 0) {
-            // Activate boost
-            activateBoost();
-            // Increment boost usage counter for analytics
-            mario.boostUsedCount++;
-        }
     }
     
-    // Update boost timers
-    if (mario.boosting) {
-        mario.boostTimer--;
-        if (mario.boostTimer <= 0) {
-            // End boost
-            mario.boosting = false;
-            mario.boostTimer = 0;
-        }
+    // Apply gravity
+    let currentGravity = GRAVITY_ACCEL;
+    if (mario.floatTimer > 0) {
+        currentGravity *= FLOAT_GRAVITY_MULTIPLIER;
+        mario.floatTimer -= deltaTime;
+        if (mario.floatTimer < 0) mario.floatTimer = 0; // Ensure it doesn't go negative
     }
-    
-    // Update boost cooldown
-    if (mario.boostCooldown > 0) {
-        mario.boostCooldown--;
-        updateBoostMeter();
-    }
-    
-    // Apply reduced gravity when float timer is active or during boost
-    if (mario.floatTimer > 0 || mario.boosting) {
-        mario.velocity += GRAVITY * (mario.boosting ? 0.5 : 0.7); // Even less gravity during boost
-        mario.floatTimer--;
-    } else {
-        mario.velocity += GRAVITY;
-    }
+    mario.velocity += currentGravity * deltaTime;
     
     // Update character animation frame
-    mario.frameCount += mario.animationSpeed;
+    mario.animationFrameCount += MARIO_ANIM_FPS * deltaTime;
     
     if (mario.isFlapping) {
         // Create smoke particles when flapping
@@ -525,22 +494,18 @@ function update() {
         mario.isFlapping = false;
     }
     
-    // Apply velocity to position with smooth movement
-    mario.y += mario.velocity;
+    // Apply vertical velocity to position
+    mario.y += mario.velocity * deltaTime;
     
-    // Apply horizontal velocity with gradual slowdown
-    // Add constant horizontal force during boost
-    if (mario.boosting) {
-        mario.velocityX += BOOST_HORIZONTAL_FORCE; // Constant forward propulsion during boost
-    }
-    
-    mario.x += mario.velocityX;
-    mario.velocityX *= FORWARD_DRAG; // Gradually slow down
+    // Apply horizontal velocity to position with gradual slowdown
+    mario.x += mario.velocityX * deltaTime;
+    // Apply drag: V_new = V_old * (DRAG_FACTOR_PER_FRAME ^ (TARGET_FPS * deltaTime))
+    // This ensures drag is consistent regardless of frame rate.
+    mario.velocityX *= Math.pow(FORWARD_DRAG_FACTOR, 60 * deltaTime);
     
     // Keep character within reasonable bounds
     const minX = 40;
-    // Allow character to go further right during boost for more dynamic movement
-    const maxX = mario.boosting ? canvas.width / 2 : canvas.width / 3;
+    const maxX = canvas.width / 3;
     if (mario.x < minX) {
         mario.x = minX;
         mario.velocityX = 0;
@@ -578,7 +543,7 @@ function update() {
     // Update pipes
     for (let i = pipes.length - 1; i >= 0; i--) {
         const pipe = pipes[i];
-        pipe.x -= PIPE_SPEED;
+        pipe.x -= PIPE_SPEED_PPS * deltaTime;
         
         // Check if pipe is off screen
         if (pipe.x + pipe.width < 0) {
@@ -609,7 +574,7 @@ function update() {
         }
     }
     
-    updateParticles();
+    updateParticles(deltaTime);
 }
 
 // Render game
@@ -683,8 +648,8 @@ function render() {
     ctx.rotate(rotation);
     
     // Draw character (centered) with 8-bit animation effect
-    // Apply a slight up/down bounce effect based on frameCount
-    const bounceOffset = mario.isFlapping ? Math.sin(mario.frameCount * 2) * 2 : 0;
+    // Apply a slight up/down bounce effect based on animationFrameCount
+    const bounceOffset = mario.isFlapping ? Math.sin(mario.animationFrameCount * 2) * 2 : 0; // The '2' multiplier might need adjustment based on MARIO_ANIM_FPS
     ctx.drawImage(charSprite, -mario.width / 2, -mario.height / 2 + bounceOffset, mario.width, mario.height);
     
     // Restore context
@@ -844,7 +809,7 @@ function handleKeyDown(e) {
             startGame();
         } else {
             flap();
-            // Start tracking hold time for boost
+            // Start tracking hold time
             mario.holdTimer = 1;
         }
     }
@@ -864,7 +829,7 @@ function handleTouchStart(e) {
             startGame();
         } else {
             flap();
-            // Start tracking hold time for boost
+            // Start tracking hold time
             mario.holdTimer = 1;
         }
     }
@@ -882,7 +847,7 @@ function handleMouseDown(e) {
             startGame();
         } else {
             flap();
-            // Start tracking hold time for boost
+            // Start tracking hold time
             mario.holdTimer = 1;
         }
     } else {

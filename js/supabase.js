@@ -1,17 +1,53 @@
 // Supabase integration for Flattenhund
 // This file handles the connection to the Supabase backend
 
-// Initialize with your Supabase project details from config.js
+// Initialize with your Supabase project details from environment variables
 // This keeps sensitive credentials out of your source code
-let supabaseUrl = 'https://rkvudsbyuzhyznetoum.supabase.co';
-let supabaseKey = ''; // Will be populated from config or Netlify environment variables
 
-// Load configuration from config.js if available
+// Client-side variables (public)
+let supabaseUrl = 'https://rkvudsbyuzhyznetoum.supabase.co';
+let supabaseKey = '';
+
+/**
+ * Load configuration for Supabase from various sources with proper fallbacks
+ * Following Next.js best practices for environment variables
+ */
 function loadConfig() {
-  if (window.gameConfig && window.gameConfig.supabase) {
-    supabaseUrl = window.gameConfig.supabase.url;
-    supabaseKey = window.gameConfig.supabase.key;
-    console.log('Loaded Supabase configuration from config.js');
+  // Browser environment with window object
+  if (typeof window !== 'undefined') {
+    // Try to load from .env via process.env (for Next.js)
+    if (typeof process !== 'undefined' && process.env) {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      }
+      if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      }
+    }
+    
+    // Fallback to window.gameConfig (legacy support)
+    if ((!supabaseUrl || !supabaseKey) && window.gameConfig && window.gameConfig.supabase) {
+      if (!supabaseUrl && window.gameConfig.supabase.url) {
+        supabaseUrl = window.gameConfig.supabase.url;
+      }
+      if (!supabaseKey && window.gameConfig.supabase.key) {
+        supabaseKey = window.gameConfig.supabase.key;
+      }
+      console.log('Loaded Supabase configuration from config.js');
+    }
+  }
+  // Server environment (Node.js)
+  else if (typeof process !== 'undefined' && process.env) {
+    // Always prefer NEXT_PUBLIC_ prefixed variables first
+    supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_DATABASE_URL || supabaseUrl;
+    supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || supabaseKey;
+  }
+  
+  // Log configuration status
+  if (supabaseUrl && supabaseKey) {
+    console.log('Supabase configuration loaded successfully');
+  } else {
+    console.warn('Supabase configuration incomplete - some functionality may be limited');
   }
 }
 

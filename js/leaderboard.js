@@ -5,14 +5,7 @@
 const dummyLeaderboard = [
     { name: "TAZ", score: 42 },
     { name: "CHLOE", score: 37 },
-    { name: "PIXEL", score: 31 },
-    { name: "RETRO", score: 28 },
-    { name: "8BIT", score: 25 },
-    { name: "ARCADE", score: 22 },
-    { name: "MARIO", score: 19 },
-    { name: "FLAPPY", score: 16 },
-    { name: "GAMER", score: 13 },
-    { name: "NOOB", score: 8 }
+    { name: "PIXEL", score: 31 }
 ];
 
 // Initialize leaderboard
