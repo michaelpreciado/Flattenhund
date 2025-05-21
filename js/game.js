@@ -4,9 +4,9 @@
 // Game constants: all speed/acceleration values are in units per second (pixels/sec or pixels/sec^2)
 // Target FPS for conversion baseline was 60 FPS.
 
-const GRAVITY_ACCEL = 0.275 * 60 * 60; // (0.275 px/frame^2 * 60 frames/sec * 60) = 990 px/sec^2 (was 0.25)
+const GRAVITY_ACCEL = 0.3 * 60 * 60; // (0.3 px/frame^2 * 60 frames/sec * 60) = 1080 px/sec^2 (was 0.275)
 const FLAP_VELOCITY_SET = -6.0 * 60; // (-6.0 px/frame * 60 frames/sec) = -360 px/sec (velocity is set on flap)
-const PIPE_SPEED_PPS = 2.7 * 60;     // (2.7 px/frame * 60 frames/sec) = 162 px/sec (was 2.3)
+const PIPE_SPEED_PPS = 3.1 * 60;     // (3.1 px/frame * 60 frames/sec) = 186 px/sec (was 2.7)
 const FORWARD_LEAP_VEL_CHANGE_PPS = 0.8 * 60; // (0.8 px/frame * 60 frames/sec) = 48 px/sec (added to velocityX)
 const MAX_FORWARD_SPEED_PPS = 2.5 * 60;   // (2.5 px/frame * 60 frames/sec) = 150 px/sec
 const FORWARD_DRAG_FACTOR = 0.95;    // Multiplier per frame (will be scaled by deltaTime: Math.pow(FORWARD_DRAG_FACTOR, 60 * deltaTime))
@@ -24,7 +24,7 @@ const MARIO_ANIM_FPS = 0.2 * 60; // (0.2 anim_frames/game_frame * 60 game_frames
 
 // Game constants continue
 const PIPE_SPAWN_INTERVAL = 2000; // Time between pipes (milliseconds) - (was 2200)
-const PIPE_GAP = 190; // Increased gap for easier gameplay
+const PIPE_GAP = 170; // Reduced gap for harder gameplay (was 190)
 const GROUND_HEIGHT = 120; // Taller ground section like in Flappy Bird
 const MARIO_WIDTH = 48; // Increased character size
 const MARIO_HEIGHT = 48; // Increased character size
