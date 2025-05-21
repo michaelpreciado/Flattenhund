@@ -109,12 +109,12 @@ function init() {
     
     // Game initialization
     
-    // Set canvas dimensions
-    canvas.width = canvas.parentElement.clientWidth;
-    canvas.height = canvas.parentElement.clientHeight;
-    
-    // For crisp pixel art rendering
-    ctx.imageSmoothingEnabled = false;
+    // Set initial canvas dimensions and add resize listener
+    resizeCanvas(); // Initial size
+    window.addEventListener('resize', resizeCanvas);
+
+    // For crisp pixel art rendering (will be set in resizeCanvas too)
+    // ctx.imageSmoothingEnabled = false; // Moved to resizeCanvas
     
     // Initialize 8-bit audio system with reduced music
     if (window.eightBitAudio) {
@@ -176,6 +176,30 @@ function init() {
     window.updateGameTheme = function(darkModeEnabled) {
         isDarkMode = darkModeEnabled;
     };
+}
+
+// Function to handle canvas resizing
+function resizeCanvas() {
+    if (!canvas || !ctx) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Update ground position
+    ground.y = canvas.height - GROUND_HEIGHT;
+    
+    // Ensure crisp pixel art rendering after resize
+    ctx.imageSmoothingEnabled = false;
+
+    // If the game is over or not started, the main gameLoop isn't running render(),
+    // so we might need to manually call render() here to update the static background elements.
+    // However, if the game IS running, gameLoop will handle rendering.
+    // For simplicity and to avoid potential double rendering issues if gameLoop is active,
+    // we can just let the gameLoop handle it if active, or if not, just update static elements.
+    // A simple render() call here should be okay as it redraws the current state.
+    if (!gameStarted || gameOver) { 
+        render(); // Redraw static elements or game over screen
+    } 
+    // If game is active, gameLoop will pick up the new dimensions in its next frame.
 }
 
 // Helper to get current character sprite

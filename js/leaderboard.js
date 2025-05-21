@@ -34,46 +34,26 @@ async function initLeaderboard() {
     }
 }
 
-// Load leaderboard from Supabase, falling back to localStorage
+// Load leaderboard exclusively from Supabase
 async function loadLeaderboard() {
+    leaderboard = []; // Default to empty if Supabase fails or is unavailable
     try {
         if (window.supabaseHelpers && typeof window.supabaseHelpers.getLeaderboard === 'function') {
             const supabaseData = await window.supabaseHelpers.getLeaderboard(10);
-            // supabaseData could be an array (empty or with scores) or null/undefined
-            if (Array.isArray(supabaseData)) { 
+            if (Array.isArray(supabaseData)) {
                 leaderboard = supabaseData; 
-                saveLeaderboardToStorage(); // Cache Supabase response (even if empty array)
-                return; // Successfully processed Supabase response
             } else {
-                console.warn("Supabase data was not an array or was null/undefined. Falling back to localStorage.");
+                console.warn("Supabase data was not an array or was null/undefined. Leaderboard will be empty.");
             }
         } else {
-            console.warn("Supabase helpers or getLeaderboard function not available. Falling back to localStorage.");
+            console.warn("Supabase helpers or getLeaderboard function not available. Leaderboard will be empty.");
         }
     } catch (err) {
-        console.error('Error loading from Supabase:', err);
-        // Proceed to localStorage fallback on error
+        console.error('Error loading leaderboard from Supabase:', err);
+        // Leaderboard remains empty on error
     }
-    
-    // Fallback: Load from localStorage if Supabase failed, was not available, or didn't return a valid array
-    const savedLeaderboard = localStorage.getItem('flattenhundLeaderboard');
-    if (savedLeaderboard) {
-        try {
-            const parsedData = JSON.parse(savedLeaderboard);
-            if (Array.isArray(parsedData)) {
-                leaderboard = parsedData;
-            } else {
-                console.warn("localStorage leaderboard data was not an array. Resetting to empty.");
-                leaderboard = [];
-            }
-        } catch (e) {
-            console.error("Error parsing leaderboard from localStorage:", e);
-            leaderboard = []; // Reset to empty on parsing error
-        }
-    } else {
-        // No Supabase data and no localStorage data, ensure leaderboard is empty.
-        leaderboard = []; 
-    }
+    // No localStorage fallback for loading the public leaderboard display.
+    // Personal high score is still managed by game.js in localStorage.
 }
 
 // Save leaderboard to localStorage
@@ -111,78 +91,53 @@ function renderLeaderboard() {
     });
 }
 
-// Check if current score qualifies for leaderboard
-function checkHighScore(currentScore) {
-    // Get the current personal high score from localStorage (key used by game.js)
+// Check if current score is a new personal best to prompt for name
+function checkAndPromptForPersonalBest(currentScore) {
     const personalHighScore = parseInt(localStorage.getItem('flattenhundHighScore')) || 0;
 
-    // Sort leaderboard by score (highest first)
-    leaderboard.sort((a, b) => b.score - a.score);
-
-    // Limit leaderboard to top 10
-    leaderboard = leaderboard.slice(0, 10);
-
-    // Check if current score beats any leaderboard entry or if there's space
-    const lowestScoreOnLeaderboard = leaderboard.length < 10 ? 0 : leaderboard[leaderboard.length - 1].score;
-    const qualifiesForLeaderboard = currentScore > lowestScoreOnLeaderboard || leaderboard.length < 10;
-
-    // Show the high score form if the player beats their personal high score
-    // AND their score qualifies for the overall leaderboard.
-    if (currentScore > personalHighScore && qualifiesForLeaderboard) {
+    if (currentScore > personalHighScore) {
+        console.log(`New personal best: ${currentScore} > ${personalHighScore}. Showing form.`);
         if (newHighScoreForm) {
             newHighScoreForm.classList.remove('hidden');
         }
         if (playerNameInput) {
             playerNameInput.focus(); // Focus on the input field
         }
-        return true; // Indicates it's a new qualifying personal high score
+        return true; // Indicates a new personal best, form should be shown
     } else {
+        console.log(`Not a new personal best: ${currentScore} <= ${personalHighScore}. Hiding form.`);
         if (newHighScoreForm) {
             newHighScoreForm.classList.add('hidden');
         }
     }
-
-    // Returns true if the score is high enough for the leaderboard,
-    // false otherwise. The form display is a side-effect based on personal best too.
-    return qualifiesForLeaderboard;
+    return false; // Not a new personal best
 }
 
-// Save high score to leaderboard (now ensures proper reload and render)
+// Save high score exclusively to Supabase
 async function saveHighScore() {
     const playerName = playerNameInput.value.trim().toUpperCase() || 'PLAYER';
-    const currentScore = window.score; // Global score variable from game.js, ensure window scope if needed
-    const character = window.selectedCharacter || 'taz'; // Get the selected character from game.js scope
+    const currentScore = window.score; // Global score variable from game.js
+    const character = window.selectedCharacter || 'taz'; // Get selected character from game.js
 
     if (typeof currentScore === 'undefined') {
-        console.error("Score is undefined in saveHighScore. Aborting.");
-        if (newHighScoreForm) newHighScoreForm.classList.add('hidden'); // Hide form if error
+        console.error("Score is undefined in saveHighScore. Aborting saving to Supabase.");
+        if (newHighScoreForm) newHighScoreForm.classList.add('hidden');
         return;
     }
 
     try {
-        // Try to save to Supabase if available
         if (window.supabaseHelpers && typeof window.supabaseHelpers.saveScore === 'function') {
+            console.log(`Attempting to save to Supabase: ${playerName}, ${currentScore}, ${character}`);
             await window.supabaseHelpers.saveScore(playerName, currentScore, character);
+            console.log("Score saved to Supabase successfully.");
+        } else {
+            console.error("Supabase helpers or saveScore function not available. Cannot save score.");
+            // Optionally, inform the user score couldn't be saved online
         }
     } catch (err) {
-        console.error('Error saving to Supabase:', err);
-        // Continue to save to localStorage as a backup
+        console.error('Error saving score to Supabase:', err);
+        // Optionally, inform the user score couldn't be saved online
     }
-    
-    // Update local leaderboard array and save to localStorage as a fallback/immediate update
-    const newEntry = {
-        name: playerName.substring(0, 10), // Limit to 10 characters
-        score: currentScore
-        // If your Supabase schema includes 'character', add it here too for local consistency:
-        // character: character 
-    };
-    leaderboard.push(newEntry);
-    
-    // Sort and trim leaderboard
-    leaderboard.sort((a, b) => b.score - a.score);
-    leaderboard = leaderboard.slice(0, 10); // Keep only top 10
-    
-    saveLeaderboardToStorage(); // Save the updated local list to localStorage
     
     // Hide the form and clear input
     if (newHighScoreForm) {
@@ -192,10 +147,11 @@ async function saveHighScore() {
         playerNameInput.value = '';
     }
     
-    // Now, reload the definitive state from Supabase (or localStorage if Supabase fails)
-    // and then re-render the UI with it.
-    await loadLeaderboard(); // This updates the global `leaderboard` array from the source of truth
-    renderLeaderboard();     // This renders the updated global `leaderboard`
+    // After attempting to save, reload the leaderboard from Supabase to reflect any changes
+    // (including the newly saved score if it makes the top 10).
+    console.log("Reloading leaderboard from Supabase after save attempt.");
+    await loadLeaderboard(); 
+    renderLeaderboard();     
 }
 
 // Update the game end function to check for high scores
@@ -206,13 +162,18 @@ function updateGameEndWithLeaderboard() {
         // Call the original gameEnd function
         originalGameEnd.apply(this, arguments);
         
-        // Hide the form by default
-        newHighScoreForm.classList.add('hidden');
+        // Hide the form by default before checking for new personal best
+        if (newHighScoreForm) {
+             newHighScoreForm.classList.add('hidden');
+        }
         
-        // Check if current score qualifies for leaderboard
-        checkHighScore(score);
+        // Check if current score is a new personal best and show form if it is
+        checkAndPromptForPersonalBest(window.score); // window.score from game.js
         
-        // Always render the leaderboard
+        // Always render the leaderboard (it will have been loaded in initLeaderboard or after a save)
+        // To ensure it's the absolute latest from Supabase, especially if game was long:
+        // await loadLeaderboard(); // Consider if needed; saveHighScore also reloads.
+        // For now, rely on saveHighScore's reload or initial load.
         renderLeaderboard();
     };
 }
