@@ -219,25 +219,34 @@ function init() {
 // Function to handle canvas resizing
 function resizeCanvas() {
     if (!canvas || !ctx) return;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    
+    // Use device pixel ratio for crisp rendering on mobile
+    const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap at 2x for performance
+    const rect = canvas.getBoundingClientRect();
+    
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    
+    ctx.scale(dpr, dpr);
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
     
     // Update ground position
-    ground.y = canvas.height - GROUND_HEIGHT;
+    ground.y = canvas.height / dpr - GROUND_HEIGHT;
     
     // Ensure crisp pixel art rendering after resize
     ctx.imageSmoothingEnabled = false;
+    
+    // Mobile-specific canvas optimizations
+    if ('ontouchstart' in window) {
+        ctx.textRenderingOptimization = 'optimizeSpeed';
+    }
 
     // If the game is over or not started, the main gameLoop isn't running render(),
     // so we might need to manually call render() here to update the static background elements.
-    // However, if the game IS running, gameLoop will handle rendering.
-    // For simplicity and to avoid potential double rendering issues if gameLoop is active,
-    // we can just let the gameLoop handle it if active, or if not, just update static elements.
-    // A simple render() call here should be okay as it redraws the current state.
     if (!gameStarted || gameOver) { 
         render(); // Redraw static elements or game over screen
     } 
-    // If game is active, gameLoop will pick up the new dimensions in its next frame.
 }
 
 // Helper to get current character sprite
@@ -362,6 +371,9 @@ async function startGame() {
     score = 0;
     updateScore();
     
+    // Dispatch mobile game start event
+    document.dispatchEvent(new CustomEvent('game:start'));
+    
     // Game start setup
     
     // Create a new game session in Supabase if available
@@ -375,6 +387,11 @@ async function startGame() {
     } catch (err) {
         console.error('Error creating game session:', err);
         currentSession = null;
+    }
+    
+    // Show mobile hint if available
+    if (window.showMobileHint) {
+        window.showMobileHint('Game started! Tap to flap!', 2000);
     }
     
     // Only play sound effects, no continuous background music
@@ -484,10 +501,25 @@ function flap() {
         
         // Visual feedback for perfect timing
         createEnhancedParticles('perfect');
+        
+        // Mobile haptic feedback for perfect timing
+        if (window.triggerHaptic) {
+            window.triggerHaptic('success');
+        }
     } else if (timeSinceLastFlap < 0.1) {
         // Rapid tapping penalty - weaker flaps
         flapPower *= 0.8;
         momentumBonus = 0.7;
+        
+        // Light haptic feedback for rapid tapping
+        if (window.triggerHaptic) {
+            window.triggerHaptic('light');
+        }
+    } else {
+        // Normal flap haptic feedback
+        if (window.triggerHaptic) {
+            window.triggerHaptic('light');
+        }
     }
     
     // Preserve some momentum from previous movement
@@ -519,15 +551,9 @@ function flap() {
     // Create enhanced particle effects
     createEnhancedParticles('normal');
     
-    // Audio with variation based on timing
+    // Play flap sound
     if (window.eightBitAudio) {
-        if (mario.perfectFlaps > 0 && timeSinceLastFlap >= 0.2 && timeSinceLastFlap <= 0.4) {
-            window.eightBitAudio.playJumpSound(); // Could add variation here
-        } else {
-            window.eightBitAudio.playJumpSound();
-        }
-    } else {
-        flapSoundContext = window.gameSounds.flap();
+        window.eightBitAudio.playFlap();
     }
 }
 
@@ -1040,59 +1066,125 @@ function checkCollision(rect1, rect2) {
 
 // End the game with GTA-style WASTED effect
 async function gameEnd() {
+    if (gameOver) return;
+    
     gameOver = true;
     
-    // Apply GTA-style effects
-    applyWastedEffect();
+    // Dispatch mobile game over event
+    document.dispatchEvent(new CustomEvent('game:over', { 
+        detail: { finalScore: score, highScore: highScore } 
+    }));
     
-    // Use 8-bit audio if available
+    // Stop the game loop
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+    }
+    
+    // Enhanced crash effect with mobile feedback
     if (window.eightBitAudio) {
-        window.eightBitAudio.playHitSound();
+        window.eightBitAudio.playHit();
+        // Brief pause before game over sound
         setTimeout(() => {
-            window.eightBitAudio.playGameOverSound();
-        }, 500);
-    } else {
-        hitSoundContext = window.gameSounds.hit();
-        setTimeout(() => {
-            gameOverSoundContext = window.gameSounds.gameOver();
+            if (window.eightBitAudio) {
+                window.eightBitAudio.playGameOver();
+            }
         }, 500);
     }
     
-    // Update high score if needed
+    // Mobile haptic feedback for game over
+    if (window.triggerHaptic) {
+        window.triggerHaptic('error');
+    }
+    
+    // Apply visual effects
+    applyWastedEffect();
+    gameOverEffect();
+    
+    // Update final score display and check for high scores
+    finalScoreDisplay.textContent = score;
+    
+    // Update high score if needed (this should happen before we check for leaderboard qualification)
     if (score > highScore) {
         highScore = score;
         localStorage.setItem('flattenhundHighScore', highScore);
+        highScoreDisplay.textContent = highScore;
     }
     
-    // Update game session in Supabase if available
+    // End game session in Supabase if available
     try {
         if (window.supabaseHelpers && currentSession) {
-            await window.supabaseHelpers.updateGameSession(
-                currentSession.id,
+            await window.supabaseHelpers.endGameSession(
+                currentSession,
                 score,
-                mario.boostUsedCount
+                Math.floor(performance.now() / 1000) // session duration in seconds
             );
         }
     } catch (err) {
-        console.error('Error updating game session:', err);
+        console.error('Error ending game session:', err);
     }
     
-    // Update DOM elements
-    finalScoreDisplay.textContent = score;
-    highScoreDisplay.textContent = highScore;
-    
-    // Show game over screen immediately but keep the slow reveal animation
-    gameOverScreen.style.display = 'flex';
+    // Show game over screen after a delay
+    setTimeout(async () => {
+        gameOverScreen.style.display = 'flex';
+        
+        // Refresh leaderboard data to ensure fresh data for high score comparison
+        if (window.refreshLeaderboard) {
+            try {
+                console.log('🔄 Refreshing leaderboard data for game over screen...');
+                await window.refreshLeaderboard();
+            } catch (err) {
+                console.error('Error refreshing leaderboard on game over:', err);
+            }
+        }
+        
+        // IMPORTANT: Check if player qualifies for high score name entry
+        // Wait a moment for the leaderboard system to be ready, then check for high score qualification
+        setTimeout(() => {
+            if (window.checkAndPromptForPersonalBest) {
+                console.log('Checking for high score qualification with score:', score);
+                window.checkAndPromptForPersonalBest(score);
+            } else if (typeof checkAndPromptForPersonalBest === 'function') {
+                console.log('Using global checkAndPromptForPersonalBest function');
+                checkAndPromptForPersonalBest(score);
+            } else {
+                console.warn('High score check function not available');
+            }
+        }, 500);
+        
+        // Mobile hint for restart
+        if (window.showMobileHint) {
+            setTimeout(() => {
+                window.showMobileHint('Tap "Play Again" to restart!', 3000);
+            }, 1000);
+        }
+    }, 2000);
 }
-// Update score display
+
+// Function to update score with mobile enhancements
 function updateScore() {
     scoreDisplay.textContent = score;
     
-    // Add a small "flash" effect to the score display
-    scoreDisplay.style.transform = 'scale(1.2)';
-    setTimeout(() => {
-        scoreDisplay.style.transform = 'scale(1)';
-    }, 100);
+    // Check for high score achievements and update storage
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('flattenhundHighScore', highScore);
+        highScoreDisplay.textContent = highScore;
+        
+        // Mobile haptic feedback for new high score
+        if (window.triggerHaptic) {
+            window.triggerHaptic('success');
+        }
+        
+        // Show mobile hint for high score
+        if (window.showMobileHint) {
+            window.showMobileHint(`New High Score: ${score}!`, 2000);
+        }
+    }
+    
+    // Dispatch score event for mobile optimization
+    document.dispatchEvent(new CustomEvent('game:score', { 
+        detail: { score: score, isHighScore: score > highScore } 
+    }));
 }
 
 // Apply GTA-style WASTED effect
@@ -1149,11 +1241,24 @@ function handleKeyUp(e) {
     }
 }
 
+// Enhanced touch handlers with better mobile integration
 function handleTouchStart(e) {
     e.preventDefault();
+    
+    // Prevent multi-touch issues
+    if (e.touches.length > 1) return;
+    
     if (!gameOver) {
         if (!gameStarted) {
-            startGame();
+            // Only start if character is selected
+            if (selectedCharacter) {
+                startGame();
+            } else {
+                // Show hint to select character
+                if (window.showMobileHint) {
+                    window.showMobileHint('Please select a character first!', 2000);
+                }
+            }
         } else {
             flap();
             // Start tracking hold time
@@ -1168,10 +1273,18 @@ function handleTouchEnd(e) {
     mario.holdTimer = 0;
 }
 
+// Enhanced mouse handlers for desktop/mobile hybrid devices
 function handleMouseDown(e) {
+    // Prevent if this is a touch device to avoid double events
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        return;
+    }
+    
     if (!gameOver) {
         if (!gameStarted) {
-            startGame();
+            if (selectedCharacter) {
+                startGame();
+            }
         } else {
             flap();
             // Start tracking hold time

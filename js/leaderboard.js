@@ -145,26 +145,36 @@ function renderLeaderboard() {
 
 // Check if current score is a new personal best OR qualifies for leaderboard to prompt for name
 function checkAndPromptForPersonalBest(currentScore) {
+    console.log('🎯 Checking high score qualification for score:', currentScore);
+    console.log('📊 Current leaderboard data:', leaderboard);
+    
     const personalHighScore = parseInt(localStorage.getItem('flattenhundHighScore')) || 0;
+    console.log('📈 Personal high score:', personalHighScore);
     
     // Check if it's a new personal best
     const isPersonalBest = currentScore > personalHighScore;
+    console.log('🏆 Is personal best?', isPersonalBest);
     
     // Check if it qualifies for the leaderboard (top 10)
     let qualifiesForLeaderboard = false;
-    if (leaderboard && leaderboard.length > 0) {
+    if (leaderboard && Array.isArray(leaderboard) && leaderboard.length > 0) {
         // If leaderboard has less than 10 entries, any score qualifies
         if (leaderboard.length < 10) {
             qualifiesForLeaderboard = currentScore > 0;
+            console.log('📋 Leaderboard has < 10 entries, any score > 0 qualifies');
         } else {
             // Check if score is higher than the lowest score in top 10
             const lowestScore = leaderboard[leaderboard.length - 1].score;
             qualifiesForLeaderboard = currentScore > lowestScore;
+            console.log('📋 Checking against lowest leaderboard score:', lowestScore, 'Qualifies?', qualifiesForLeaderboard);
         }
     } else {
-        // If no leaderboard data, any score > 0 qualifies
+        // If no leaderboard data or empty, any score > 0 qualifies
         qualifiesForLeaderboard = currentScore > 0;
+        console.log('📋 No leaderboard data, any score > 0 qualifies');
     }
+
+    console.log('🎖️ Final qualification: Personal Best:', isPersonalBest, 'Leaderboard:', qualifiesForLeaderboard);
 
     if (isPersonalBest || qualifiesForLeaderboard) {
         let message = '';
@@ -176,22 +186,36 @@ function checkAndPromptForPersonalBest(currentScore) {
             message = 'YOU MADE THE TOP 10!';
         }
         
-        console.log(`${message} Score: ${currentScore}. Showing form.`);
+        console.log(`🎉 ${message} Score: ${currentScore}. Showing form.`);
+        
         if (newHighScoreForm) {
             // Update the form message
             const formMessage = newHighScoreForm.querySelector('p');
             if (formMessage) {
                 formMessage.textContent = message;
             }
+            
+            // Show the form
             newHighScoreForm.classList.remove('hidden');
+            console.log('✅ High score form displayed');
+            
+            // Mobile hint
+            if (window.showMobileHint) {
+                window.showMobileHint('Enter your name for the leaderboard!', 3000);
+            }
+        } else {
+            console.error('❌ High score form element not found!');
         }
+        
         if (playerNameInput) {
             playerNameInput.value = ''; // Clear any previous input
             playerNameInput.focus(); // Focus on the input field
+        } else {
+            console.error('❌ Player name input element not found!');
         }
         return true; // Indicates should show form
     } else {
-        console.log(`No high score achievement: ${currentScore}. Personal best: ${personalHighScore}, Leaderboard qualification: ${qualifiesForLeaderboard}. Hiding form.`);
+        console.log(`ℹ️ No high score achievement: ${currentScore}. Personal best: ${personalHighScore}, Leaderboard qualification: ${qualifiesForLeaderboard}. Hiding form.`);
         if (newHighScoreForm) {
             newHighScoreForm.classList.add('hidden');
         }
@@ -211,6 +235,8 @@ async function saveHighScore() {
         return;
     }
 
+    console.log(`💾 Saving high score: ${playerName} - ${currentScore} (${character})`);
+
     // Show saving state
     const originalButtonText = saveScoreButton.textContent;
     saveScoreButton.textContent = 'SAVING...';
@@ -220,14 +246,30 @@ async function saveHighScore() {
     try {
         if (window.supabaseHelpers && typeof window.supabaseHelpers.saveScore === 'function') {
             console.log(`Attempting to save to Supabase: ${playerName}, ${currentScore}, ${character}`);
-            await window.supabaseHelpers.saveScore(playerName, currentScore, character);
-            console.log("Score saved to Supabase successfully.");
+            const saveResult = await window.supabaseHelpers.saveScore(playerName, currentScore, character);
             
-            // Show success feedback
-            saveScoreButton.textContent = 'SAVED!';
-            setTimeout(() => {
-                saveScoreButton.textContent = originalButtonText;
-            }, 1000);
+            if (saveResult) {
+                console.log("✅ Score saved to Supabase successfully.");
+                
+                // Show success feedback
+                saveScoreButton.textContent = 'SAVED!';
+                
+                // Mobile haptic feedback for success
+                if (window.triggerHaptic) {
+                    window.triggerHaptic('success');
+                }
+                
+                // Mobile hint for success
+                if (window.showMobileHint) {
+                    window.showMobileHint('Score saved to leaderboard!', 2000);
+                }
+                
+                setTimeout(() => {
+                    saveScoreButton.textContent = originalButtonText;
+                }, 1000);
+            } else {
+                throw new Error('Save operation returned false');
+            }
         } else {
             console.error("Supabase helpers or saveScore function not available. Cannot save score.");
             saveScoreButton.textContent = 'ERROR - TRY AGAIN';
@@ -252,7 +294,7 @@ async function saveHighScore() {
     }
     
     // Only hide form and reset if save was successful
-    setTimeout(() => {
+    setTimeout(async () => {
         // Hide the form and clear input
         if (newHighScoreForm) {
             newHighScoreForm.classList.add('hidden');
@@ -263,36 +305,23 @@ async function saveHighScore() {
         }
         saveScoreButton.disabled = false;
         
-        // After attempting to save, reload the leaderboard from Supabase to reflect any changes
-        // (including the newly saved score if it makes the top 10).
-        console.log("Reloading leaderboard from Supabase after save attempt.");
-        loadLeaderboard().then(() => {
+        // IMPORTANT: Immediately refresh the leaderboard to show the new score
+        console.log("🔄 Refreshing leaderboard after successful save...");
+        try {
+            await loadLeaderboard();
             renderLeaderboard();
-        });
+            console.log("✅ Leaderboard refreshed successfully");
+        } catch (err) {
+            console.error("❌ Error refreshing leaderboard:", err);
+        }
     }, 1000); // Wait 1 second to show "SAVED!" message
 }
 
 // Update the game end function to check for high scores
 function updateGameEndWithLeaderboard() {
-    const originalGameEnd = window.gameEnd;
-    
-    window.gameEnd = async function() {
-        // Call the original gameEnd function
-        originalGameEnd.apply(this, arguments);
-        
-        // Hide the form by default before checking for new personal best
-        if (newHighScoreForm) {
-             newHighScoreForm.classList.add('hidden');
-        }
-        
-        // Refresh leaderboard data when game ends to show latest scores
-        console.log('Game ended, refreshing leaderboard...');
-        await loadLeaderboard();
-        renderLeaderboard();
-        
-        // Check if current score is a new personal best and show form if it is
-        checkAndPromptForPersonalBest(window.score); // window.score from game.js
-    };
+    // Instead of overriding gameEnd, we'll use the existing integration in game.js
+    // The game.js file now properly calls checkAndPromptForPersonalBest
+    console.log('🎮 Leaderboard integration ready - game.js will handle high score checks');
 }
 
 // Add periodic refresh of leaderboard data
@@ -344,14 +373,38 @@ async function testSupabaseConnection() {
     }
 }
 
-// Expose functions globally for debugging
+// Expose functions globally for debugging AND for game integration
 window.leaderboardDebug = {
     refreshLeaderboard,
     testSupabaseConnection,
     getCurrentLeaderboard: () => leaderboard,
     renderLeaderboard,
-    loadLeaderboard
+    loadLeaderboard,
+    // Add test functions for debugging
+    testHighScoreFlow: (testScore) => {
+        console.log('🧪 Testing high score flow with score:', testScore);
+        return checkAndPromptForPersonalBest(testScore);
+    },
+    showTestForm: () => {
+        console.log('🧪 Showing high score form for testing');
+        if (newHighScoreForm) {
+            newHighScoreForm.classList.remove('hidden');
+            if (playerNameInput) {
+                playerNameInput.focus();
+            }
+        }
+    },
+    hideTestForm: () => {
+        console.log('🧪 Hiding high score form');
+        if (newHighScoreForm) {
+            newHighScoreForm.classList.add('hidden');
+        }
+    }
 };
+
+// IMPORTANT: Expose high score check function globally for game integration
+window.checkAndPromptForPersonalBest = checkAndPromptForPersonalBest;
+window.refreshLeaderboard = refreshLeaderboard;
 
 // Initialize when DOM is loaded (now with async handling)
 document.addEventListener('DOMContentLoaded', function() {
@@ -360,5 +413,11 @@ document.addEventListener('DOMContentLoaded', function() {
         await initLeaderboard(); // Await initLeaderboard to complete data loading and initial render
         updateGameEndWithLeaderboard();
         startLeaderboardRefresh();
+        
+        // Ensure functions are available globally after initialization
+        window.checkAndPromptForPersonalBest = checkAndPromptForPersonalBest;
+        window.refreshLeaderboard = refreshLeaderboard;
+        
+        console.log('✅ Leaderboard system initialized with global functions exposed');
     }, 500);
 });

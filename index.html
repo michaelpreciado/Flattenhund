@@ -2,66 +2,93 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FLATTENHUND">
+    <meta name="theme-color" content="#4EC0CA">
+    <meta name="msapplication-navbutton-color" content="#4EC0CA">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <!-- Prevent address bar from hiding/showing on scroll -->
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
+    
+    <!-- Performance optimizations -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="referrer" content="no-referrer">
+    
     <title>FLATTENHUND</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/dark-mode.css">
     <!-- Pixel font preloading for faster rendering -->
     <link rel="preload" href="assets/fonts/PressStart2P-Regular.ttf" as="font" type="font/ttf" crossorigin>
+    
+    <!-- Mobile icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/icon-180.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/icon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/images/icon-16.png">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
+    <!-- Mobile-specific touch overlay for better responsiveness -->
+    <div class="mobile-touch-overlay" id="mobile-touch-overlay"></div>
+    
     <div class="game-container">
         <div class="start-screen" id="start-screen">
             <h1>FLATTENHUND</h1>
-            <p>Choose your character:</p>
+            <p class="choose-character-text">Choose your character:</p>
             <div class="character-select">
                 <button class="character-btn" id="choose-taz">
                     <img src="assets/images/taz.png" alt="Taz" class="character-img"><br>
-                    Taz
+                    <span class="character-name">Taz</span>
                 </button>
                 <button class="character-btn" id="choose-chloe">
                     <img src="assets/images/chloe.png" alt="Chloe" class="character-img"><br>
-                    Chloe
+                    <span class="character-name">Chloe</span>
                 </button>
             </div>
-            <p>Press SPACE or tap to start and flap!</p>
-            <button id="start-button" disabled>Start Game</button>
+            <p class="instructions-text">Tap to start and flap!</p>
+            <button id="start-button" class="primary-button" disabled>Start Game</button>
         </div>
         
         <canvas id="game-canvas"></canvas>
+        
+        <!-- Mobile performance indicator -->
+        <div class="performance-indicator" id="performance-indicator"></div>
         
         <div class="game-over" id="game-over">
             <div class="wasted-container">
                 <h2 class="wasted-text">WASTED</h2>
             </div>
-            <p>Score: <span id="final-score">0</span></p>
-            <p>High Score: <span id="high-score">0</span></p>
-            <button id="restart-button">Play Again</button>
-            
-            <div class="leaderboard-container">
-                <h3 class="leaderboard-title">TOP SCORES</h3>
-                <div class="leaderboard">
-                    <div class="leaderboard-row header">
-                        <div class="rank">RANK</div>
-                        <div class="name">NAME</div>
-                        <div class="score">SCORE</div>
-                    </div>
-                    <div id="leaderboard-entries">
-                        <!-- Leaderboard entries will be inserted here -->
+            <div class="game-over-content">
+                <p class="final-score-text">Score: <span id="final-score">0</span></p>
+                <p class="high-score-text">High Score: <span id="high-score">0</span></p>
+                <button id="restart-button" class="primary-button">Play Again</button>
+                
+                <div class="leaderboard-container">
+                    <h3 class="leaderboard-title">TOP SCORES</h3>
+                    <div class="leaderboard">
+                        <div class="leaderboard-row header">
+                            <div class="rank">RANK</div>
+                            <div class="name">NAME</div>
+                            <div class="score">SCORE</div>
+                        </div>
+                        <div id="leaderboard-entries">
+                            <!-- Leaderboard entries will be inserted here -->
+                        </div>
                     </div>
                 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js"></script>
-<script src="js/supabase.js"></script>
-            </div>
-            
-            <div id="new-high-score-form" class="hidden">
-                <p>NEW HIGH SCORE!</p>
-                <div class="input-container">
-                    <label for="player-name">ENTER YOUR NAME:</label>
-                    <input type="text" id="player-name" maxlength="10" placeholder="MAX 10 CHARS">
+                
+                <div id="new-high-score-form" class="hidden">
+                    <p>NEW HIGH SCORE!</p>
+                    <div class="input-container">
+                        <label for="player-name">ENTER YOUR NAME:</label>
+                        <input type="text" id="player-name" maxlength="10" placeholder="MAX 10 CHARS" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+                    </div>
+                    <button id="save-score-button" class="primary-button">SAVE SCORE</button>
                 </div>
-                <button id="save-score-button">SAVE SCORE</button>
             </div>
         </div>
         
@@ -69,12 +96,22 @@
             <div class="score" id="score">0</div>
         </div>
         
-        <!-- Dark mode toggle button -->
-        <button id="dark-mode-toggle" class="mode-toggle" aria-label="Toggle dark mode">
+        <!-- Enhanced mobile-friendly dark mode toggle -->
+        <button id="dark-mode-toggle" class="mode-toggle mobile-optimized" aria-label="Toggle dark mode">
             <span class="moon-icon">🌙</span>
             <span class="sun-icon">☀️</span>
         </button>
+        
+        <!-- Mobile control hints -->
+        <div class="mobile-hints" id="mobile-hints">
+            <div class="hint-text">Tap anywhere to flap!</div>
+        </div>
     </div>
+    
+    <!-- Supabase and core scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
     
     <!-- 8-bit sound system -->
     <script src="js/sounds.js"></script>
@@ -84,6 +121,9 @@
     <script src="js/dark-mode.js"></script>
     <script src="js/leaderboard.js"></script>
     <script src="js/background-effects.js"></script>
+    
+    <!-- Mobile optimization script -->
+    <script src="js/mobile-optimization.js"></script>
     
     <!-- Pixel effect overlay (subtle scanlines) -->
     <div class="crt-overlay"></div>
