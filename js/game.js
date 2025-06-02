@@ -2,48 +2,76 @@
 // This file handles the game initialization, loop, and core mechanics
 
 // Game constants: all speed/acceleration values are in units per second (pixels/sec or pixels/sec^2)
-// Target FPS for conversion baseline was 60 FPS.
+// Enhanced physics system for better game flow and challenge
 
-const GRAVITY_ACCEL = 0.3 * 60 * 60; // (0.3 px/frame^2 * 60 frames/sec * 60) = 1080 px/sec^2 (was 0.275)
-const FLAP_VELOCITY_SET = -6.0 * 60; // (-6.0 px/frame * 60 frames/sec) = -360 px/sec (velocity is set on flap)
-const PIPE_SPEED_PPS = 3.1 * 60;     // (3.1 px/frame * 60 frames/sec) = 186 px/sec (was 2.7)
-const FORWARD_LEAP_VEL_CHANGE_PPS = 0.8 * 60; // (0.8 px/frame * 60 frames/sec) = 48 px/sec (added to velocityX)
-const MAX_FORWARD_SPEED_PPS = 2.5 * 60;   // (2.5 px/frame * 60 frames/sec) = 150 px/sec
-const FORWARD_DRAG_FACTOR = 0.95;    // Multiplier per frame (will be scaled by deltaTime: Math.pow(FORWARD_DRAG_FACTOR, 60 * deltaTime))
+// Base Physics Constants
+const BASE_GRAVITY_ACCEL = 0.4 * 60 * 60; // 1440 px/sec^2 - Increased for more challenge
+const BASE_FLAP_VELOCITY = -6.0 * 60; // -360 px/sec - Reduced for lower jumps (was -7.5 * 60)
+const BASE_PIPE_SPEED_PPS = 3.5 * 60; // 210 px/sec - Faster base speed
+const TERMINAL_VELOCITY = 12 * 60; // 720 px/sec - Maximum fall speed
 
-const FLOAT_DURATION_SECONDS = 15 / 60; // (15 frames / 60 fps) = 0.25 seconds
-const FLOAT_GRAVITY_MULTIPLIER = 0.7; // Gravity is multiplied by this during float
+// Progressive Difficulty Scaling
+const DIFFICULTY_SCALE_RATE = 0.08; // How much difficulty increases per score point
+const MAX_DIFFICULTY_MULTIPLIER = 2.5; // Maximum difficulty scaling (2.5x harder at high scores)
+const SPEED_INCREASE_RATE = 0.05; // Speed increase per score point
+const GAP_DECREASE_RATE = 0.8; // How much gap decreases per score point
 
-const PARTICLE_MIN_SPEED_X_PPS = -3 * 60; // -180 px/sec
-const PARTICLE_MAX_SPEED_X_PPS = -1 * 60; // -60 px/sec
-const PARTICLE_MIN_SPEED_Y_PPS = -1 * 60; // -60 px/sec
-const PARTICLE_MAX_SPEED_Y_PPS = 1 * 60;  // 60 px/sec
-const PARTICLE_LIFE_DECAY_PER_SEC = 0.05 * 60; // 3.0 units of life per second (assuming life is 1.0 initially)
+// Advanced Physics
+const AIR_RESISTANCE_FACTOR = 0.985; // Air resistance for more realistic movement
+const MOMENTUM_PRESERVATION = 0.92; // How much momentum is preserved between flaps
+const VARIABLE_GRAVITY_FACTOR = 1.3; // Gravity increases when falling fast
+const PRECISION_FLAP_BONUS = 0.85; // Reduced gravity for precise timing
 
-const MARIO_ANIM_FPS = 0.2 * 60; // (0.2 anim_frames/game_frame * 60 game_frames/sec) = 12 animation frames/sec
+// Enhanced Movement
+const FORWARD_LEAP_VEL_CHANGE_PPS = 1.2 * 60; // 72 px/sec - More forward momentum
+const MAX_FORWARD_SPEED_PPS = 3.2 * 60; // 192 px/sec - Higher max speed
+const FORWARD_DRAG_FACTOR = 0.94; // More drag for better control
 
-// Game constants continue
-const PIPE_SPAWN_INTERVAL = 2000; // Time between pipes (milliseconds) - (was 2200)
-const PIPE_GAP = 170; // Reduced gap for harder gameplay (was 190)
-const GROUND_HEIGHT = 120; // Taller ground section like in Flappy Bird
-const MARIO_WIDTH = 48; // Increased character size
-const MARIO_HEIGHT = 48; // Increased character size
+// Improved Float System
+const FLOAT_DURATION_SECONDS = 18 / 60; // 0.3 seconds - Slightly longer float
+const FLOAT_GRAVITY_MULTIPLIER = 0.55; // Stronger float effect
+const PERFECT_TIMING_WINDOW = 0.15; // Window for perfect timing bonus
 
-// Game variables
+// Enhanced Visual Effects
+const ROTATION_SENSITIVITY = 8; // More responsive rotation
+const ROTATION_SMOOTHING = 0.75; // Smoother rotation interpolation
+
+// Dynamic Pipe System
+const BASE_PIPE_SPAWN_INTERVAL = 1800; // Base time between pipes (milliseconds)
+const MIN_PIPE_SPAWN_INTERVAL = 1200; // Minimum spawn interval at high difficulty
+const BASE_PIPE_GAP = 160; // Base gap size - Smaller for more challenge
+const MIN_PIPE_GAP = 130; // Minimum gap at high difficulty
+const GROUND_HEIGHT = 120;
+const MARIO_WIDTH = 48;
+const MARIO_HEIGHT = 48;
+
+// Particle system for enhanced effects
+const PARTICLE_MIN_SPEED_X_PPS = -4 * 60; // -240 px/sec
+const PARTICLE_MAX_SPEED_X_PPS = -1.5 * 60; // -90 px/sec
+const PARTICLE_MIN_SPEED_Y_PPS = -2 * 60; // -120 px/sec
+const PARTICLE_MAX_SPEED_Y_PPS = 2 * 60; // 120 px/sec
+const PARTICLE_LIFE_DECAY_PER_SEC = 0.06 * 60; // Faster particle decay
+
+const MARIO_ANIM_FPS = 0.25 * 60; // Slightly faster animation
+
+// Enhanced Game variables
 let canvas, ctx;
 let mario = {
     x: 80,
     y: 300,
     width: MARIO_WIDTH,
     height: MARIO_HEIGHT,
-    velocity: 0,      // Vertical velocity
-    velocityX: 0,     // Horizontal velocity for smooth movement
+    velocity: 0,
+    velocityX: 0,
     isFlapping: false,
-    frameCount: 0,    // For animation frames
-    animationFrameCount: 0, // Accumulator for animation frames
-    floatTimer: 0,    // Timer for floating effect (in seconds)
-    smoothRotation: 0, // Smoothly interpolated rotation value
-    holdTimer: 0     // Timer for tracking how long input is held
+    frameCount: 0,
+    animationFrameCount: 0,
+    floatTimer: 0,
+    smoothRotation: 0,
+    holdTimer: 0,
+    lastFlapTime: 0, // For timing-based bonuses
+    perfectFlaps: 0, // Count of well-timed flaps
+    momentum: 0 // Accumulated momentum for advanced physics
 };
 
 // Supabase session tracking
@@ -95,6 +123,16 @@ let startScreen, gameOverScreen, scoreDisplay, finalScoreDisplay, highScoreDispl
 
 // Dark mode support
 let isDarkMode = false;
+
+// Progressive Difficulty Tracking
+let difficultyMultiplier = 1.0;
+let currentPipeSpeed = BASE_PIPE_SPEED_PPS;
+let currentGravity = BASE_GRAVITY_ACCEL;
+let currentPipeGap = BASE_PIPE_GAP;
+let currentSpawnInterval = BASE_PIPE_SPAWN_INTERVAL;
+
+// Show bonus text for enhanced scoring
+let bonusTexts = []; // Array to store active bonus texts
 
 // Initialize the game
 function init() {
@@ -364,26 +402,55 @@ async function startGame() {
 
 // Reset the game
 function resetGame() {
-    // Reset player variables before starting
+    // Reset mario state
+    mario.x = 80;
+    mario.y = 300;
     mario.velocity = 0;
     mario.velocityX = 0;
-    mario.rotation = 0;
-    mario.smoothRotation = 0;
-    mario.x = 80;
+    mario.isFlapping = false;
+    mario.frameCount = 0;
+    mario.animationFrameCount = 0;
     mario.floatTimer = 0;
-    // Reset player properties
+    mario.smoothRotation = 0;
+    mario.holdTimer = 0;
+    mario.lastFlapTime = 0;
+    mario.perfectFlaps = 0;
+    mario.momentum = 0;
     
-    // Reset canvas effects
+    // Reset game state
+    pipes = [];
+    particles = [];
+    bonusTexts = [];
+    score = 0;
+    gameStarted = false;
+    gameOver = false;
+    lastPipeSpawn = 0;
+    
+    // Reset difficulty scaling
+    difficultyMultiplier = 1.0;
+    currentPipeSpeed = BASE_PIPE_SPEED_PPS;
+    currentGravity = BASE_GRAVITY_ACCEL;
+    currentPipeGap = BASE_PIPE_GAP;
+    currentSpawnInterval = BASE_PIPE_SPAWN_INTERVAL;
+    
+    // Reset visual effects
     canvas.style.filter = 'none';
     canvas.style.transition = 'none';
     
-    // Reset container effects
-    const gameContainer = document.querySelector('.game-container');
-    gameContainer.style.boxShadow = 'none';
+    // Hide game over screen and show start screen
+    gameOverScreen.style.display = 'none';
+    startScreen.style.display = 'flex';
     
-    // Prepare game restart
+    // Update score display
+    scoreDisplay.textContent = '0';
     
-    startGame();
+    // Clear any animation frames
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+    }
+    
+    // Initial render
+    render();
 }
 
 // Game loop
@@ -402,33 +469,63 @@ function gameLoop() {
 
 // Make mario flap with floatier physics and smooth forward movement
 function flap() {
-    // Set vertical velocity and activate float timer
-    mario.velocity = FLAP_VELOCITY_SET;
+    const currentTime = Date.now();
+    const timeSinceLastFlap = (currentTime - mario.lastFlapTime) / 1000; // Convert to seconds
+    
+    // Calculate timing bonus for well-spaced flaps
+    let flapPower = BASE_FLAP_VELOCITY;
+    let momentumBonus = 1.0;
+    
+    // Perfect timing bonus (0.2-0.4 seconds between flaps is optimal)
+    if (timeSinceLastFlap >= 0.2 && timeSinceLastFlap <= 0.4) {
+        flapPower *= 1.15; // 15% stronger flap
+        momentumBonus = 1.25;
+        mario.perfectFlaps++;
+        
+        // Visual feedback for perfect timing
+        createEnhancedParticles('perfect');
+    } else if (timeSinceLastFlap < 0.1) {
+        // Rapid tapping penalty - weaker flaps
+        flapPower *= 0.8;
+        momentumBonus = 0.7;
+    }
+    
+    // Preserve some momentum from previous movement
+    if (mario.velocity > 0) { // If falling
+        mario.momentum = mario.velocity * MOMENTUM_PRESERVATION;
+    }
+    
+    // Apply enhanced flap velocity with momentum consideration
+    mario.velocity = flapPower - (mario.momentum * 0.3);
+    
+    // Enhanced float timer with difficulty scaling
+    mario.floatTimer = FLOAT_DURATION_SECONDS * (1 + mario.perfectFlaps * 0.02);
     mario.isFlapping = true;
-    mario.floatTimer = FLOAT_DURATION_SECONDS; // Set float timer (in seconds)
+    mario.lastFlapTime = currentTime;
     
-    // Add forward velocity impulse
-    mario.velocityX += FORWARD_LEAP_VEL_CHANGE_PPS;
+    // Dynamic forward movement based on timing and current speed
+    const forwardBoost = FORWARD_LEAP_VEL_CHANGE_PPS * momentumBonus;
+    mario.velocityX += forwardBoost;
     
-    // Cap maximum forward speed
-    if (mario.velocityX > MAX_FORWARD_SPEED_PPS) {
-        mario.velocityX = MAX_FORWARD_SPEED_PPS;
+    // Enhanced speed capping with smoother transitions
+    const maxSpeed = MAX_FORWARD_SPEED_PPS * (1 + difficultyMultiplier * 0.1);
+    if (mario.velocityX > maxSpeed) {
+        mario.velocityX = maxSpeed;
     }
-    if (mario.velocityX < -MAX_FORWARD_SPEED_PPS) { // Cap negative speed too if character can move backward
-        mario.velocityX = -MAX_FORWARD_SPEED_PPS;
+    if (mario.velocityX < -maxSpeed * 0.5) {
+        mario.velocityX = -maxSpeed * 0.5;
     }
-
-    // Create smoke particles immediately upon flapping
-    // The createSmokeTrail() call was already in update() based on mario.isFlapping, that's fine.
     
-    // Reset flap count (if mario.flapCount is used elsewhere, seems it's not fully implemented yet)
-    // setTimeout(() => {
-    //     mario.flapCount = 0; 
-    // }, 500);
+    // Create enhanced particle effects
+    createEnhancedParticles('normal');
     
-    // Use 8-bit audio if available
+    // Audio with variation based on timing
     if (window.eightBitAudio) {
-        window.eightBitAudio.playJumpSound();
+        if (mario.perfectFlaps > 0 && timeSinceLastFlap >= 0.2 && timeSinceLastFlap <= 0.4) {
+            window.eightBitAudio.playJumpSound(); // Could add variation here
+        } else {
+            window.eightBitAudio.playJumpSound();
+        }
     } else {
         flapSoundContext = window.gameSounds.flap();
     }
@@ -453,20 +550,43 @@ function updateParticles(deltaTime) {
     }
 }
 
-// Create smoke trail particles when character jumps
-function createSmokeTrail() {
-    // Create 5-8 particles for each flap
-    const numParticles = 5 + Math.floor(Math.random() * 4);
+// Create enhanced smoke trail particles with different effects
+function createEnhancedParticles(type = 'normal') {
+    let numParticles, colors, speeds, sizes;
+    
+    switch(type) {
+        case 'perfect':
+            numParticles = 8 + Math.floor(Math.random() * 6);
+            colors = ['#FFD700', '#FFA500', '#FFFF00']; // Gold colors for perfect timing
+            speeds = { multiplier: 1.5 };
+            sizes = { base: 6, variation: 8 };
+            break;
+        case 'score':
+            numParticles = 12 + Math.floor(Math.random() * 8);
+            colors = ['#00FF00', '#32CD32', '#90EE90']; // Green colors for scoring
+            speeds = { multiplier: 2.0 };
+            sizes = { base: 4, variation: 6 };
+            break;
+        default: // 'normal'
+            numParticles = 6 + Math.floor(Math.random() * 4);
+            colors = ['#FFFFFF', '#EEEEEE', '#DDDDDD']; // White/gray for normal
+            speeds = { multiplier: 1.0 };
+            sizes = { base: 4, variation: 6 };
+    }
     
     for (let i = 0; i < numParticles; i++) {
+        const angle = (Math.random() - 0.5) * Math.PI; // Random angle
+        const speed = (0.5 + Math.random() * 0.5) * speeds.multiplier;
+        
         particles.push({
-            x: mario.x,
-            y: mario.y + mario.height/2 + (Math.random() * 10 - 5),
-            size: 4 + Math.random() * 6,  // Pixelated small squares
-            speedX_pps: PARTICLE_MIN_SPEED_X_PPS + Math.random() * (PARTICLE_MAX_SPEED_X_PPS - PARTICLE_MIN_SPEED_X_PPS),
-            speedY_pps: PARTICLE_MIN_SPEED_Y_PPS + Math.random() * (PARTICLE_MAX_SPEED_Y_PPS - PARTICLE_MIN_SPEED_Y_PPS),
-            life: 1.0,  // Full opacity to start
-            color: Math.random() > 0.5 ? '#FFFFFF' : '#EEEEEE'  // White/light gray
+            x: mario.x + mario.width / 2,
+            y: mario.y + mario.height / 2 + (Math.random() * 10 - 5),
+            size: sizes.base + Math.random() * sizes.variation,
+            speedX_pps: (PARTICLE_MIN_SPEED_X_PPS + Math.random() * (PARTICLE_MAX_SPEED_X_PPS - PARTICLE_MIN_SPEED_X_PPS)) * speed,
+            speedY_pps: (PARTICLE_MIN_SPEED_Y_PPS + Math.random() * (PARTICLE_MAX_SPEED_Y_PPS - PARTICLE_MIN_SPEED_Y_PPS)) * speed,
+            life: 1.0 + (type === 'perfect' ? 0.5 : 0), // Perfect particles last longer
+            color: colors[Math.floor(Math.random() * colors.length)],
+            type: type
         });
     }
 }
@@ -489,107 +609,266 @@ function renderParticles() {
     ctx.globalAlpha = 1.0;
 }
 
-// Update game state
+// Update game state with enhanced physics and progressive difficulty
 function update(deltaTime) {
     if (!gameStarted || gameOver) return;
     
-    // Update mario with floatier physics and forward leap
+    // Calculate progressive difficulty based on score
+    updateDifficulty();
     
-    // Simple hold timer tracking
+    // Enhanced physics updates
+    updateEnhancedPhysics(deltaTime);
+    
+    // Update character animation and effects
+    updateCharacterAnimation(deltaTime);
+    
+    // Handle collision detection with enhanced precision
+    updateCollisions();
+    
+    // Manage pipe system with dynamic generation
+    updatePipeSystem(deltaTime);
+    
+    // Update particle systems
+    updateParticles(deltaTime);
+    
+    // Update bonus text displays
+    updateBonusTexts(deltaTime);
+}
+
+// Calculate and update progressive difficulty scaling
+function updateDifficulty() {
+    // Base difficulty scaling
+    difficultyMultiplier = 1.0 + (score * DIFFICULTY_SCALE_RATE);
+    difficultyMultiplier = Math.min(difficultyMultiplier, MAX_DIFFICULTY_MULTIPLIER);
+    
+    // Update pipe speed with scaling
+    currentPipeSpeed = BASE_PIPE_SPEED_PPS * (1 + score * SPEED_INCREASE_RATE);
+    currentPipeSpeed = Math.min(currentPipeSpeed, BASE_PIPE_SPEED_PPS * 2.2); // Cap at 2.2x base speed
+    
+    // Update gravity (slightly increases with difficulty)
+    currentGravity = BASE_GRAVITY_ACCEL * (1 + difficultyMultiplier * 0.15);
+    
+    // Update pipe gap (decreases with score, but not too much)
+    currentPipeGap = Math.max(MIN_PIPE_GAP, BASE_PIPE_GAP - (score * GAP_DECREASE_RATE));
+    
+    // Update spawn interval (faster spawning at higher scores)
+    currentSpawnInterval = Math.max(MIN_PIPE_SPAWN_INTERVAL, 
+        BASE_PIPE_SPAWN_INTERVAL - (score * 25));
+}
+
+// Enhanced physics system with variable gravity and air resistance
+function updateEnhancedPhysics(deltaTime) {
+    // Hold timer tracking for input
     if (mario.holdTimer > 0) {
         mario.holdTimer++;
     }
     
-    // Apply gravity
-    let currentGravity = GRAVITY_ACCEL;
-    if (mario.floatTimer > 0) {
-        currentGravity *= FLOAT_GRAVITY_MULTIPLIER;
-        mario.floatTimer -= deltaTime;
-        if (mario.floatTimer < 0) mario.floatTimer = 0; // Ensure it doesn't go negative
-    }
-    mario.velocity += currentGravity * deltaTime;
+    // Variable gravity system
+    let gravityToApply = currentGravity;
     
-    // Update character animation frame
+    // Float effect with enhanced physics
+    if (mario.floatTimer > 0) {
+        gravityToApply *= FLOAT_GRAVITY_MULTIPLIER;
+        
+        // Perfect timing bonus - reduced gravity for skilled players
+        if (mario.perfectFlaps > 2) {
+            gravityToApply *= PRECISION_FLAP_BONUS;
+        }
+        
+        mario.floatTimer -= deltaTime;
+        if (mario.floatTimer < 0) mario.floatTimer = 0;
+    }
+    
+    // Variable gravity based on velocity (faster falling = stronger gravity)
+    if (mario.velocity > 200) { // If falling fast
+        gravityToApply *= VARIABLE_GRAVITY_FACTOR;
+    }
+    
+    // Apply gravity with terminal velocity
+    mario.velocity += gravityToApply * deltaTime;
+    if (mario.velocity > TERMINAL_VELOCITY) {
+        mario.velocity = TERMINAL_VELOCITY;
+    }
+    
+    // Apply air resistance for more realistic movement
+    mario.velocity *= Math.pow(AIR_RESISTANCE_FACTOR, 60 * deltaTime);
+    
+    // Apply vertical movement
+    mario.y += mario.velocity * deltaTime;
+    
+    // Enhanced horizontal movement with improved drag
+    mario.x += mario.velocityX * deltaTime;
+    
+    // Progressive drag system (more drag at higher speeds)
+    const dragFactor = FORWARD_DRAG_FACTOR - (Math.abs(mario.velocityX) / 1000) * 0.02;
+    mario.velocityX *= Math.pow(dragFactor, 60 * deltaTime);
+    
+    // Enhanced character bounds with smoother constraints
+    const minX = 40 + (score * 0.5); // Slightly pushes player forward over time
+    const maxX = canvas.width / 3 + (score * 0.3);
+    
+    if (mario.x < minX) {
+        mario.x = minX;
+        mario.velocityX = Math.max(0, mario.velocityX); // Only stop leftward movement
+    } else if (mario.x > maxX) {
+        mario.x = maxX;
+        mario.velocityX = Math.min(0, mario.velocityX); // Only stop rightward movement
+    }
+    
+    // Enhanced rotation system
+    const maxRotation = 0.6;
+    const targetRotation = Math.max(-maxRotation, Math.min(maxRotation, 
+        mario.velocity / (ROTATION_SENSITIVITY * 10)));
+    
+    // Smoother rotation interpolation
+    mario.smoothRotation = mario.smoothRotation * ROTATION_SMOOTHING + 
+        targetRotation * (1 - ROTATION_SMOOTHING);
+}
+
+// Update character animation and visual effects
+function updateCharacterAnimation(deltaTime) {
     mario.animationFrameCount += MARIO_ANIM_FPS * deltaTime;
     
+    // Create enhanced particle effects during flapping
     if (mario.isFlapping) {
-        // Create smoke particles when flapping
-        createSmokeTrail();
+        createEnhancedParticles('normal');
         mario.isFlapping = false;
     }
     
-    // Apply vertical velocity to position
-    mario.y += mario.velocity * deltaTime;
-    
-    // Apply horizontal velocity to position with gradual slowdown
-    mario.x += mario.velocityX * deltaTime;
-    // Apply drag: V_new = V_old * (DRAG_FACTOR_PER_FRAME ^ (TARGET_FPS * deltaTime))
-    // This ensures drag is consistent regardless of frame rate.
-    mario.velocityX *= Math.pow(FORWARD_DRAG_FACTOR, 60 * deltaTime);
-    
-    // Keep character within reasonable bounds
-    const minX = 40;
-    const maxX = canvas.width / 3;
-    if (mario.x < minX) {
-        mario.x = minX;
-        mario.velocityX = 0;
-    } else if (mario.x > maxX) {
-        mario.x = maxX;
-        mario.velocityX = 0;
+    // Reset perfect flap counter gradually
+    if (mario.perfectFlaps > 0 && Math.random() < 0.001) {
+        mario.perfectFlaps = Math.max(0, mario.perfectFlaps - 1);
     }
-    
-    // Visual feedback - smooth rotation based on velocity
-    const targetRotation = Math.max(-0.5, Math.min(0.5, mario.velocity / 10));
-    
-    // Smoothly interpolate rotation for more fluid movement
-    mario.smoothRotation = mario.smoothRotation * 0.8 + targetRotation * 0.2;
-    mario.rotation = mario.smoothRotation;
-    
-    // Check for collisions with ground
+}
+
+// Enhanced collision detection
+function updateCollisions() {
+    // Ground collision with enhanced response
     if (mario.y + mario.height > ground.y) {
         mario.y = ground.y - mario.height;
         gameEnd();
+        return;
     }
     
-    // Check for collisions with ceiling
+    // Ceiling collision with bounce effect
     if (mario.y < 0) {
         mario.y = 0;
-        mario.velocity = 0;
+        mario.velocity = Math.abs(mario.velocity) * 0.3; // Small bounce effect
     }
-    
-    // Spawn pipes
+}
+
+// Enhanced pipe system with dynamic generation
+function updatePipeSystem(deltaTime) {
     const currentTime = Date.now();
-    if (currentTime - lastPipeSpawn > PIPE_SPAWN_INTERVAL) {
-        spawnPipe();
+    
+    // Dynamic pipe spawning based on difficulty
+    if (currentTime - lastPipeSpawn > currentSpawnInterval) {
+        spawnEnhancedPipe();
         lastPipeSpawn = currentTime;
     }
     
-    // Update pipes
+    // Update and check pipe collisions
     for (let i = pipes.length - 1; i >= 0; i--) {
         const pipe = pipes[i];
-        pipe.x -= PIPE_SPEED_PPS * deltaTime;
         
-        // Check if pipe is off screen
+        // Move pipes with current speed
+        pipe.x -= currentPipeSpeed * deltaTime;
+        
+        // Remove off-screen pipes
         if (pipe.x + pipe.width < 0) {
             pipes.splice(i, 1);
             continue;
         }
         
-        // Check for collisions with pipes or if player tries to go around (force them through the gap)
-        if (checkCollision(mario, pipe.top) || checkCollision(mario, pipe.bottom) || 
-            // Check if player tries to fly over or under the pipes when they're in range
-            (mario.x + mario.width > pipe.x && mario.x < pipe.x + pipe.width && 
-             (mario.y < pipe.top.y + pipe.top.height || mario.y + mario.height > pipe.bottom.y))) {
-            gameEnd();
+        // Enhanced collision detection with smaller hitbox for fairness
+        const hitboxReduction = 0; // Removed hitbox reduction - collision should be exact
+        const playerHitbox = {
+            x: mario.x + hitboxReduction,
+            y: mario.y + hitboxReduction,
+            width: mario.width - (hitboxReduction * 2),
+            height: mario.height - (hitboxReduction * 2)
+        };
+        
+        // Debug logging
+        if (pipes.length > 0) {
+            const isOverlapping = (mario.x < pipe.x + pipe.width && mario.x + mario.width > pipe.x);
+            if (isOverlapping) {
+                console.log('Player overlapping with pipe horizontally', {
+                    playerX: mario.x,
+                    playerY: mario.y,
+                    playerWidth: mario.width,
+                    playerHeight: mario.height,
+                    pipeX: pipe.x,
+                    pipeTopHeight: pipe.top.height,
+                    pipeBottomY: pipe.bottom.y
+                });
+            }
         }
         
-        // Check if mario passed the pipe
+        // Check collision with basic, reliable collision detection
+        if (checkCollision(playerHitbox, pipe.top) || 
+            checkCollision(playerHitbox, pipe.bottom)) {
+            console.log('Collision detected!'); // Debug log
+            gameEnd();
+            return;
+        }
+        
+        // Additional simple collision check as backup
+        const isInPipeHorizontally = mario.x < pipe.x + pipe.width && mario.x + mario.width > pipe.x;
+        const isInTopPipe = mario.y < pipe.top.height;
+        const isInBottomPipe = mario.y + mario.height > pipe.bottom.y;
+        
+        if (isInPipeHorizontally && (isInTopPipe || isInBottomPipe)) {
+            console.log('Simple collision detected!');
+            gameEnd();
+            return;
+        }
+        
+        // Score detection with visual feedback
         if (!pipe.passed && mario.x > pipe.x + pipe.width) {
             pipe.passed = true;
-            score++;
+            
+            // Calculate bonus scoring
+            let scoreToAdd = 1;
+            let bonusReasons = [];
+            
+            // Difficulty bonus
+            if (pipe.scoreMultiplier > 1) {
+                scoreToAdd += 1;
+                bonusReasons.push('TIGHT GAP');
+            }
+            
+            // Perfect flap bonus
+            if (mario.perfectFlaps > 2) {
+                scoreToAdd += 1;
+                bonusReasons.push('PERFECT TIMING');
+            }
+            
+            // Speed bonus at high difficulty
+            if (difficultyMultiplier > 2.0) {
+                scoreToAdd += 1;
+                bonusReasons.push('HIGH SPEED');
+            }
+            
+            // Consecutive perfect flaps mega bonus
+            if (mario.perfectFlaps > 5) {
+                scoreToAdd += 2;
+                bonusReasons.push('SKILL MASTER');
+            }
+            
+            score += scoreToAdd;
             updateScore();
             
-            // Use 8-bit audio if available
+            // Enhanced visual feedback for bonus scoring
+            if (scoreToAdd > 1) {
+                createEnhancedParticles('score');
+                // Show bonus text briefly
+                showBonusText(bonusReasons, scoreToAdd);
+            } else {
+                createEnhancedParticles('normal');
+            }
+            
+            // Enhanced audio feedback
             if (window.eightBitAudio) {
                 window.eightBitAudio.playScoreSound();
             } else {
@@ -597,8 +876,6 @@ function update(deltaTime) {
             }
         }
     }
-    
-    updateParticles(deltaTime);
 }
 
 // Render game
@@ -620,27 +897,69 @@ function render() {
     if (gameStarted && !gameOver) {
         const indicatorX = 30;
         const indicatorY = 100;
-        const indicatorHeight = 100;
-        const indicatorWidth = 8;
+        const indicatorHeight = 120;
+        const indicatorWidth = 10;
         
-        // Background bar
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        // Enhanced background bar with difficulty coloring
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fillRect(indicatorX, indicatorY, indicatorWidth, indicatorHeight);
         
-        // Simple velocity indicator
-        const normalizedVelocity = (mario.velocity + 8) / 16; // Map from -8 to 8 to 0 to 1
+        // Difficulty indicator (border color)
+        let difficultyColor = '#00FF00'; // Green for easy
+        if (difficultyMultiplier > 1.5) difficultyColor = '#FFFF00'; // Yellow for medium
+        if (difficultyMultiplier > 2.0) difficultyColor = '#FF6600'; // Orange for hard
+        if (difficultyMultiplier > 2.3) difficultyColor = '#FF0000'; // Red for extreme
+        
+        ctx.strokeStyle = difficultyColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(indicatorX - 1, indicatorY - 1, indicatorWidth + 2, indicatorHeight + 2);
+        
+        // Enhanced velocity indicator
+        const maxDisplayVelocity = 600; // Adjusted for new physics
+        const normalizedVelocity = (mario.velocity + maxDisplayVelocity/2) / maxDisplayVelocity;
         const clampedVelocity = Math.max(0, Math.min(1, normalizedVelocity));
         const velocityHeight = indicatorHeight * clampedVelocity;
         
-        // Color based on velocity (green for upward, yellow for neutral, red for fast downward)
+        // Enhanced color coding based on physics state
         let velocityColor;
-        if (mario.velocity < -2) velocityColor = '#50C878'; // Green for upward
-        else if (mario.velocity < 2) velocityColor = '#FFD700'; // Yellow for neutral
-        else velocityColor = '#FF6347'; // Red for fast downward
+        if (mario.floatTimer > 0) {
+            velocityColor = '#FFD700'; // Gold during float
+        } else if (mario.velocity < -150) {
+            velocityColor = '#00FF00'; // Green for strong upward
+        } else if (mario.velocity < -50) {
+            velocityColor = '#90EE90'; // Light green for upward
+        } else if (mario.velocity < 100) {
+            velocityColor = '#FFFF00'; // Yellow for neutral
+        } else if (mario.velocity < 300) {
+            velocityColor = '#FFA500'; // Orange for falling
+        } else {
+            velocityColor = '#FF0000'; // Red for fast falling
+        }
         
         ctx.fillStyle = velocityColor;
         ctx.fillRect(indicatorX, indicatorY + indicatorHeight - velocityHeight, 
                     indicatorWidth, velocityHeight);
+        
+        // Perfect flap counter
+        if (mario.perfectFlaps > 0) {
+            ctx.fillStyle = '#FFD700';
+            ctx.font = '10px PressStart2P, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(`PERFECT: ${mario.perfectFlaps}`, indicatorX + 15, indicatorY + 15);
+        }
+        
+        // Speed indicator
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '8px PressStart2P, monospace';
+        ctx.textAlign = 'left';
+        const speedPercent = Math.round((currentPipeSpeed / BASE_PIPE_SPEED_PPS - 1) * 100);
+        if (speedPercent > 0) {
+            ctx.fillText(`SPEED +${speedPercent}%`, indicatorX + 15, indicatorY + 35);
+        }
+        
+        // Difficulty display
+        ctx.fillStyle = difficultyColor;
+        ctx.fillText(`DIFF: ${difficultyMultiplier.toFixed(1)}x`, indicatorX + 15, indicatorY + 50);
     }
     
     // Draw the ground
@@ -679,6 +998,9 @@ function render() {
     // Restore context
     ctx.restore();
     
+    // Render bonus texts
+    renderBonusTexts();
+    
     // Draw score with 8-bit style
     // Draw score in a pixelated rectangle box (no rounded corners for 8-bit style)
     const scoreText = score.toString();
@@ -702,27 +1024,8 @@ function render() {
 
 // Spawn a new pipe
 function spawnPipe() {
-    const pipeWidth = 90; // Wider pipes for better visibility
-    const minHeight = 80; // Taller minimum pipe height
-    const maxHeight = canvas.height - PIPE_GAP - minHeight - GROUND_HEIGHT;
-    const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
-    const bottomY = topHeight + PIPE_GAP;
-    
-    pipes.push({
-        x: canvas.width,
-        width: pipeWidth,
-        top: {
-            y: 0,
-            height: topHeight,
-            width: pipeWidth
-        },
-        bottom: {
-            y: bottomY,
-            height: canvas.height - bottomY,
-            width: pipeWidth
-        },
-        passed: false
-    });
+    // Redirect to enhanced version
+    spawnEnhancedPipe();
 }
 
 // Check collision between two rectangles
@@ -886,3 +1189,112 @@ function handleMouseUp(e) {
 
 // Initialize the game when the page loads
 window.addEventListener('load', init);
+
+// Enhanced pipe spawning with dynamic patterns
+function spawnEnhancedPipe() {
+    const pipeWidth = 85 + Math.random() * 10; // Slight width variation
+    let minHeight, maxHeight, gapVariation;
+    
+    // Dynamic pipe difficulty based on score
+    if (score < 5) {
+        // Easy pipes for beginners
+        minHeight = 60;
+        gapVariation = 0;
+    } else if (score < 15) {
+        // Medium difficulty
+        minHeight = 70;
+        gapVariation = Math.random() * 10 - 5; // ±5 pixels gap variation
+    } else {
+        // Hard pipes with more variation
+        minHeight = 80 + Math.floor(score / 10) * 5; // Increases with score
+        gapVariation = Math.random() * 20 - 10; // ±10 pixels gap variation
+    }
+    
+    const actualGap = currentPipeGap + gapVariation;
+    maxHeight = canvas.height - actualGap - minHeight - GROUND_HEIGHT;
+    
+    // Ensure reasonable bounds
+    maxHeight = Math.max(maxHeight, minHeight + 20);
+    
+    const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+    const bottomY = topHeight + actualGap;
+    
+    // Enhanced pipe object with additional properties
+    const newPipe = {
+        x: canvas.width,
+        width: pipeWidth,
+        actualGap: actualGap, // Store the actual gap used
+        difficulty: difficultyMultiplier, // Store difficulty when created
+        top: {
+            y: 0,
+            height: topHeight,
+            width: pipeWidth
+        },
+        bottom: {
+            y: bottomY,
+            height: canvas.height - bottomY,
+            width: pipeWidth
+        },
+        passed: false,
+        // Add pipe scoring multiplier for difficult pipes
+        scoreMultiplier: actualGap < currentPipeGap - 5 ? 2 : 1
+    };
+    
+    pipes.push(newPipe);
+}
+
+// Enhanced collision detection with more precise boundaries
+function checkEnhancedCollision(rect1, rect2) {
+    // Slightly forgiving collision detection - reduced margin for better accuracy
+    const margin = 0.5; // Reduced from 2 to 0.5 pixels for better collision detection
+    
+    return (
+        rect1.x < rect2.x + rect2.width - margin &&
+        rect1.x + rect1.width > rect2.x + margin &&
+        rect1.y < rect2.y + rect2.height - margin &&
+        rect1.y + rect1.height > rect2.y + margin
+    );
+}
+
+// Show bonus text for enhanced scoring
+function showBonusText(reasons, points) {
+    const bonusText = {
+        text: `+${points} ${reasons[0]}`, // Show main reason
+        x: mario.x + mario.width + 20,
+        y: mario.y + mario.height / 2,
+        life: 2.0, // 2 seconds
+        color: points > 2 ? '#FFD700' : '#00FF00',
+        fontSize: points > 2 ? 14 : 12
+    };
+    bonusTexts.push(bonusText);
+    
+    // Limit number of bonus texts on screen
+    if (bonusTexts.length > 3) {
+        bonusTexts.shift();
+    }
+}
+
+// Update and render bonus texts
+function updateBonusTexts(deltaTime) {
+    for (let i = bonusTexts.length - 1; i >= 0; i--) {
+        const bonus = bonusTexts[i];
+        bonus.y -= 30 * deltaTime; // Float upward
+        bonus.life -= deltaTime;
+        
+        if (bonus.life <= 0) {
+            bonusTexts.splice(i, 1);
+        }
+    }
+}
+
+function renderBonusTexts() {
+    for (const bonus of bonusTexts) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, bonus.life / 2.0);
+        ctx.fillStyle = bonus.color;
+        ctx.font = `${bonus.fontSize}px PressStart2P, monospace`;
+        ctx.textAlign = 'left';
+        ctx.fillText(bonus.text, bonus.x, bonus.y);
+        ctx.restore();
+    }
+}

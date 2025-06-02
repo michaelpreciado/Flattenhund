@@ -5,8 +5,8 @@
 // This keeps sensitive credentials out of your source code
 
 // Client-side variables (public)
-let supabaseUrl = 'https://rkvudsbyuzhyznetoum.supabase.co';
-let supabaseKey = '';
+let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+let supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 /**
  * Load configuration for Supabase from various sources with proper fallbacks
