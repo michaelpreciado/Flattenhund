@@ -130,6 +130,10 @@ window.eightBitAudio = {
     playHitSound: playHitSound,
     playGameOverSound: playGameOverSound,
     playBoostSound: playBoostSound,
+    // Add aliases that the game code expects
+    playFlap: playJumpSound,  // Alias for flap sound
+    playHit: playHitSound,    // Alias for hit sound  
+    playGameOver: playGameOverSound, // Alias for game over sound
     enableMusic: function(enable) {
         musicEnabled = enable;
     }

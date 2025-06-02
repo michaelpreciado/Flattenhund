@@ -1068,6 +1068,7 @@ function checkCollision(rect1, rect2) {
 async function gameEnd() {
     if (gameOver) return;
     
+    console.log('🎮 === GAME END START ===');
     gameOver = true;
     
     // Dispatch mobile game over event
@@ -1080,25 +1081,46 @@ async function gameEnd() {
         cancelAnimationFrame(animationFrameId);
     }
     
-    // Enhanced crash effect with mobile feedback
-    if (window.eightBitAudio) {
-        window.eightBitAudio.playHit();
-        // Brief pause before game over sound
-        setTimeout(() => {
-            if (window.eightBitAudio) {
-                window.eightBitAudio.playGameOver();
-            }
-        }, 500);
+    // Enhanced crash effect with mobile feedback (with error protection)
+    try {
+        if (window.eightBitAudio && typeof window.eightBitAudio.playHit === 'function') {
+            window.eightBitAudio.playHit();
+            console.log('✅ Hit sound played');
+            
+            // Brief pause before game over sound
+            setTimeout(() => {
+                try {
+                    if (window.eightBitAudio && typeof window.eightBitAudio.playGameOver === 'function') {
+                        window.eightBitAudio.playGameOver();
+                        console.log('✅ Game over sound played');
+                    }
+                } catch (audioErr) {
+                    console.warn('⚠️ Error playing game over sound:', audioErr);
+                }
+            }, 500);
+        } else {
+            console.warn('⚠️ Audio system not available or playHit function missing');
+        }
+    } catch (audioErr) {
+        console.warn('⚠️ Error playing hit sound:', audioErr);
     }
     
     // Mobile haptic feedback for game over
-    if (window.triggerHaptic) {
-        window.triggerHaptic('error');
+    try {
+        if (window.triggerHaptic) {
+            window.triggerHaptic('error');
+        }
+    } catch (hapticErr) {
+        console.warn('⚠️ Error with haptic feedback:', hapticErr);
     }
     
     // Apply visual effects
-    applyWastedEffect();
-    gameOverEffect();
+    try {
+        applyWastedEffect();
+        gameOverEffect();
+    } catch (visualErr) {
+        console.warn('⚠️ Error with visual effects:', visualErr);
+    }
     
     // Update final score display and check for high scores
     finalScoreDisplay.textContent = score;
@@ -1110,54 +1132,72 @@ async function gameEnd() {
         highScoreDisplay.textContent = highScore;
     }
     
-    // End game session in Supabase if available
+    // End game session in Supabase if available (non-blocking)
     try {
         if (window.supabaseHelpers && currentSession) {
-            await window.supabaseHelpers.endGameSession(
+            window.supabaseHelpers.endGameSession(
                 currentSession,
                 score,
-                Math.floor(performance.now() / 1000) // session duration in seconds
-            );
+                Math.floor(performance.now() / 1000)
+            ).catch(err => console.error('Error ending game session:', err));
         }
-    } catch (err) {
-        console.error('Error ending game session:', err);
+    } catch (supabaseErr) {
+        console.warn('⚠️ Error with Supabase session end:', supabaseErr);
     }
     
-    // Show game over screen after a delay
+    console.log('🎮 Starting game over screen timeout...');
+    
+    // Show game over screen after a delay - much faster response
     setTimeout(async () => {
-        gameOverScreen.style.display = 'flex';
+        console.log('🎮 === SHOWING GAME OVER SCREEN ===');
         
-        // Refresh leaderboard data to ensure fresh data for high score comparison
-        if (window.refreshLeaderboard) {
+        try {
+            gameOverScreen.style.display = 'flex';
+            console.log('✅ Game over screen displayed');
+            
+            // IMPORTANT: Wait for leaderboard refresh to complete before checking high scores
+            console.log('🔄 Refreshing leaderboard before high score check...');
             try {
-                console.log('🔄 Refreshing leaderboard data for game over screen...');
-                await window.refreshLeaderboard();
+                if (window.refreshLeaderboard) {
+                    await window.refreshLeaderboard(); // Wait for completion
+                    console.log('✅ Leaderboard refresh completed, now checking high scores...');
+                }
             } catch (err) {
-                console.error('Error refreshing leaderboard on game over:', err);
+                console.error('❌ Error refreshing leaderboard:', err);
             }
-        }
-        
-        // IMPORTANT: Check if player qualifies for high score name entry
-        // Wait a moment for the leaderboard system to be ready, then check for high score qualification
-        setTimeout(() => {
-            if (window.checkAndPromptForPersonalBest) {
-                console.log('Checking for high score qualification with score:', score);
-                window.checkAndPromptForPersonalBest(score);
-            } else if (typeof checkAndPromptForPersonalBest === 'function') {
-                console.log('Using global checkAndPromptForPersonalBest function');
-                checkAndPromptForPersonalBest(score);
-            } else {
-                console.warn('High score check function not available');
-            }
-        }, 500);
-        
-        // Mobile hint for restart
-        if (window.showMobileHint) {
+            
+            // Check for high score qualification AFTER leaderboard is refreshed
             setTimeout(() => {
-                window.showMobileHint('Tap "Play Again" to restart!', 3000);
-            }, 1000);
+                if (window.checkAndPromptForPersonalBest) {
+                    try {
+                        console.log('🎯 Checking for high score qualification with score:', score);
+                        const result = window.checkAndPromptForPersonalBest(score);
+                        console.log('🎯 High score check result:', result);
+                    } catch (err) {
+                        console.error('❌ Error checking high score qualification:', err);
+                    }
+                } else {
+                    console.error('❌ checkAndPromptForPersonalBest function not available');
+                }
+            }, 300); // Shorter delay since leaderboard is already loaded
+            
+            // Mobile hint for restart
+            if (window.showMobileHint) {
+                setTimeout(() => {
+                    window.showMobileHint('Tap "Play Again" to restart!', 3000);
+                }, 1500); // Adjusted for faster screen appearance
+            }
+        } catch (gameOverErr) {
+            console.error('❌ Critical error in game over screen display:', gameOverErr);
+            // Force show the game over screen even if there are errors
+            if (gameOverScreen) {
+                gameOverScreen.style.display = 'flex';
+                console.log('🚨 Force-displayed game over screen after error');
+            }
         }
-    }, 2000);
+    }, 800); // Reduced from 2000ms to 800ms for much faster response
+    
+    console.log('🎮 === GAME END SETUP COMPLETE ===');
 }
 
 // Function to update score with mobile enhancements
