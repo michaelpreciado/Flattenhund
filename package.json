@@ -10,8 +10,6 @@
   "keywords": ["game", "javascript", "canvas", "flappy-bird", "pixel-art"],
   "author": "Your Name",
   "license": "MIT",
-  "devDependencies": {
-    "netlify-plugin-inline-env": "^1.0.2"
-  },
+  "devDependencies": {},
   "dependencies": {}
 } 

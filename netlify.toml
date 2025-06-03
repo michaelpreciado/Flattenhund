@@ -92,12 +92,4 @@
 [[headers]]
   for = "/assets/*"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# Custom build hook to inject environment variables
-[[plugins]]
-  package = "netlify-plugin-inline-env"
-  
-  [plugins.inputs]
-    # Specify which env vars to make available to the browser
-    include_files = ["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"] 
+    Cache-Control = "public, max-age=31536000, immutable" 
