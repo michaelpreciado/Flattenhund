@@ -100,4 +100,4 @@
   
   [plugins.inputs]
     # Specify which env vars to make available to the browser
-    include = ["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"] 
+    include_files = ["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY"] 
