@@ -182,54 +182,123 @@ function init() {
     const chooseChloeBtn = document.getElementById('choose-chloe');
     const startBtn = document.getElementById('start-button');
     
+    console.log('🔧 Debug: Character selection elements found:', {
+        chooseTazBtn: !!chooseTazBtn,
+        chooseChloeBtn: !!chooseChloeBtn,
+        startBtn: !!startBtn
+    });
+    
     // Function to select Taz character
     const selectTaz = () => {
+        console.log('🎮 Taz character selection triggered');
         selectedCharacter = 'taz';
         chooseTazBtn.classList.add('selected');
         chooseChloeBtn.classList.remove('selected');
         startBtn.disabled = false;
-        console.log('✅ Taz character selected');
+        console.log('✅ Taz character selected, startBtn.disabled:', startBtn.disabled);
     };
     
     // Function to select Chloe character
     const selectChloe = () => {
+        console.log('🎮 Chloe character selection triggered');
         selectedCharacter = 'chloe';
         chooseChloeBtn.classList.add('selected');
         chooseTazBtn.classList.remove('selected');
         startBtn.disabled = false;
-        console.log('✅ Chloe character selected');
+        console.log('✅ Chloe character selected, startBtn.disabled:', startBtn.disabled);
     };
     
-    // Add both click and touch event listeners for better mobile compatibility
-    chooseTazBtn.addEventListener('click', selectTaz);
-    chooseTazBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        selectTaz();
-    });
-    
-    chooseChloeBtn.addEventListener('click', selectChloe);
-    chooseChloeBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        selectChloe();
-    });
-    
-    // Enhanced start button event handling
+    // Enhanced start button event handling with extensive debugging
     const handleStartGame = (e) => {
+        console.log('🎮 Start game triggered:', {
+            selectedCharacter,
+            startBtnDisabled: startBtn.disabled,
+            eventType: e.type,
+            touchEvent: e.type === 'touchend'
+        });
+        
         e.preventDefault();
-        if (selectedCharacter && !startBtn.disabled) {
-            startGame();
-        } else if (!selectedCharacter) {
+        
+        if (!selectedCharacter) {
             console.warn('⚠️ No character selected yet');
-            // Visual feedback for mobile users
-            if (window.showMobileHint) {
-                window.showMobileHint('Please select a character first!', 2000);
-            }
+            alert('Please select a character first!'); // Fallback alert for debugging
+            return;
         }
+        
+        if (startBtn.disabled) {
+            console.warn('⚠️ Start button is disabled');
+            alert('Start button is disabled!'); // Fallback alert for debugging
+            return;
+        }
+        
+        console.log('🚀 Calling startGame()...');
+        startGame();
     };
     
-    // Add both click and touch events for start button
-    startBtn.addEventListener('click', handleStartGame);
-    startBtn.addEventListener('touchend', handleStartGame);
+    // Add comprehensive event listeners with debugging
+    if (chooseTazBtn) {
+        chooseTazBtn.addEventListener('click', (e) => {
+            console.log('🖱️ Taz click event');
+            selectTaz();
+        });
+        chooseTazBtn.addEventListener('touchend', (e) => {
+            console.log('👆 Taz touch event');
+            e.preventDefault();
+            selectTaz();
+        });
+        chooseTazBtn.addEventListener('touchstart', (e) => {
+            console.log('👆 Taz touchstart event');
+            e.preventDefault();
+        });
+    }
+    
+    if (chooseChloeBtn) {
+        chooseChloeBtn.addEventListener('click', (e) => {
+            console.log('🖱️ Chloe click event');
+            selectChloe();
+        });
+        chooseChloeBtn.addEventListener('touchend', (e) => {
+            console.log('👆 Chloe touch event');
+            e.preventDefault();
+            selectChloe();
+        });
+        chooseChloeBtn.addEventListener('touchstart', (e) => {
+            console.log('👆 Chloe touchstart event');
+            e.preventDefault();
+        });
+    }
+    
+    if (startBtn) {
+        startBtn.addEventListener('click', (e) => {
+            console.log('🖱️ Start button click event');
+            handleStartGame(e);
+        });
+        startBtn.addEventListener('touchend', (e) => {
+            console.log('👆 Start button touch event');
+            handleStartGame(e);
+        });
+        startBtn.addEventListener('touchstart', (e) => {
+            console.log('👆 Start button touchstart event');
+            e.preventDefault();
+        });
+    }
+    
+    // Additional debugging for mobile devices
+    document.addEventListener('touchstart', (e) => {
+        console.log('📱 Global touchstart detected on:', e.target.tagName, e.target.id, e.target.className);
+    });
+    
+    document.addEventListener('touchend', (e) => {
+        console.log('📱 Global touchend detected on:', e.target.tagName, e.target.id, e.target.className);
+    });
+    
+    // Test if we can set a default character for debugging
+    setTimeout(() => {
+        if (!selectedCharacter) {
+            console.log('🔧 Debug: Auto-selecting Taz for testing');
+            selectTaz();
+        }
+    }, 1000);
     
     // Restart button event listener
     document.getElementById('restart-button').addEventListener('click', resetGame);
@@ -425,20 +494,38 @@ function loadAssets() {
 
 // Start the game
 async function startGame() {
+    console.log('🚀 === START GAME FUNCTION CALLED ===');
+    console.log('🎮 Current state:', {
+        selectedCharacter,
+        gameStarted,
+        gameOver,
+        startScreenDisplay: startScreen?.style?.display
+    });
+    
     // Default to Taz if none selected (should not happen)
-    if (!selectedCharacter) selectedCharacter = 'taz';
+    if (!selectedCharacter) {
+        console.warn('⚠️ No character selected, defaulting to Taz');
+        selectedCharacter = 'taz';
+    }
+    
+    console.log('🎮 Setting game state...');
     gameStarted = true;
     gameOver = false;
+    
+    console.log('🎮 Hiding screens...');
     startScreen.style.display = 'none';
     gameOverScreen.style.display = 'none';
+    
+    console.log('🎮 Resetting score...');
     score = 0;
     updateScore();
     
+    console.log('🎮 Dispatching mobile game start event...');
     // Dispatch mobile game start event
     document.dispatchEvent(new CustomEvent('game:start'));
     
     // Game start setup
-    
+    console.log('🎮 Creating Supabase session...');
     // Create a new game session in Supabase if available
     try {
         if (window.supabaseHelpers) {
@@ -446,20 +533,22 @@ async function startGame() {
                 selectedCharacter,
                 isDarkMode
             );
+            console.log('✅ Supabase session created:', currentSession);
+        } else {
+            console.log('⚠️ Supabase helpers not available');
         }
     } catch (err) {
         console.error('Error creating game session:', err);
         currentSession = null;
     }
     
+    console.log('🎮 Showing mobile hint...');
     // Show mobile hint if available
     if (window.showMobileHint) {
         window.showMobileHint('Game started! Tap to flap!', 2000);
     }
     
-    // Only play sound effects, no continuous background music
-    // Theme music is disabled by default
-    
+    console.log('🎮 Setting up Mario position...');
     // Reset mario position with a better head start
     mario.y = 230; // Start even higher in the air
     mario.velocity = -3.0 * 60; // Stronger initial upward velocity (-180 px/sec)
@@ -469,15 +558,21 @@ async function startGame() {
     mario.smoothRotation = 0; // Reset rotation
     mario.animationFrameCount = 0;
     
+    console.log('🎮 Clearing pipes...');
     // Clear pipes
     pipes = [];
     
+    console.log('🎮 Starting game loop...');
     // Start game loop
     lastTime = performance.now(); // Initialize lastTime for deltaTime calculation
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
     }
+    
+    console.log('🎮 Calling gameLoop()...');
     gameLoop();
+    
+    console.log('✅ === START GAME FUNCTION COMPLETED ===');
 }
 
 // Reset the game
