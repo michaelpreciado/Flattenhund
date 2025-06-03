@@ -57,7 +57,7 @@ const MARIO_ANIM_FPS = 0.25 * 60; // Slightly faster animation
 // Enhanced Game variables
 let canvas, ctx;
 let mario = {
-    x: 80,
+    x: 60,
     y: 300,
     width: MARIO_WIDTH,
     height: MARIO_HEIGHT,
@@ -413,7 +413,7 @@ async function startGame() {
     mario.y = 230; // Start even higher in the air
     mario.velocity = -3.0 * 60; // Stronger initial upward velocity (-180 px/sec)
     mario.velocityX = 0.5 * 60; // Small initial forward momentum (30 px/sec)
-    mario.x = 80; // Reset X position
+    mario.x = 60; // Reset X position
     mario.floatTimer = FLOAT_DURATION_SECONDS * 1.33; // Start with float timer active (a bit more than one flap's worth)
     mario.smoothRotation = 0; // Reset rotation
     mario.animationFrameCount = 0;
@@ -432,7 +432,7 @@ async function startGame() {
 // Reset the game
 function resetGame() {
     // Reset mario state
-    mario.x = 80;
+    mario.x = 60;
     mario.y = 300;
     mario.velocity = 0;
     mario.velocityX = 0;
@@ -741,9 +741,9 @@ function updateEnhancedPhysics(deltaTime) {
     const dragFactor = FORWARD_DRAG_FACTOR - (Math.abs(mario.velocityX) / 1000) * 0.02;
     mario.velocityX *= Math.pow(dragFactor, 60 * deltaTime);
     
-    // Enhanced character bounds with smoother constraints
-    const minX = 40 + (score * 0.5); // Slightly pushes player forward over time
-    const maxX = canvas.width / 3 + (score * 0.3);
+    // Fixed character bounds to keep character on the left side
+    const minX = 40; // Fixed minimum position - no score-based movement
+    const maxX = Math.min(canvas.width / 4, 100); // Reduced maximum to keep character more left-aligned
     
     if (mario.x < minX) {
         mario.x = minX;
