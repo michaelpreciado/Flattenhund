@@ -18,8 +18,12 @@ async function loadEnvironmentVariables() {
       console.log('✅ Loaded environment variables from Netlify build');
     }
     
-    // Also check for direct global variables (Netlify sometimes uses this approach)
+    // Check for Netlify's Supabase integration variables and other naming patterns
     const netlifyVars = {
+      // Netlify's Supabase integration variables (correct names)
+      SUPABASE_DATABASE_URL: window.SUPABASE_DATABASE_URL,
+      SUPABASE_ANON_KEY: window.SUPABASE_ANON_KEY,
+      // Other common naming patterns
       VITE_SUPABASE_URL: window.VITE_SUPABASE_URL,
       VITE_SUPABASE_ANON_KEY: window.VITE_SUPABASE_ANON_KEY,
       NEXT_PUBLIC_SUPABASE_URL: window.NEXT_PUBLIC_SUPABASE_URL,
@@ -62,29 +66,56 @@ async function loadEnvironmentVariables() {
     }
   }
   
-  // 3. Make variables available globally with both naming conventions
+  // 3. Make variables available globally with all naming conventions
   if (!window.process) window.process = {};
   if (!window.process.env) window.process.env = {};
   
-  // Support both VITE_ and NEXT_PUBLIC_ prefixes
+  // Support multiple naming conventions and cross-compatibility
   Object.keys(envVars).forEach(key => {
     window.process.env[key] = envVars[key];
     
-    // Cross-compatibility: if we have VITE_ prefix, also set NEXT_PUBLIC_
-    if (key.startsWith('VITE_SUPABASE_')) {
-      const nextKey = key.replace('VITE_', 'NEXT_PUBLIC_');
-      window.process.env[nextKey] = envVars[key];
+    // Handle Netlify's Supabase integration variables
+    if (key === 'SUPABASE_DATABASE_URL') {
+      window.process.env.VITE_SUPABASE_URL = envVars[key];
+      window.process.env.NEXT_PUBLIC_SUPABASE_URL = envVars[key];
     }
     
-    // And vice versa
-    if (key.startsWith('NEXT_PUBLIC_SUPABASE_')) {
-      const viteKey = key.replace('NEXT_PUBLIC_', 'VITE_');
-      window.process.env[viteKey] = envVars[key];
+    if (key === 'SUPABASE_ANON_KEY') {
+      window.process.env.VITE_SUPABASE_ANON_KEY = envVars[key];
+      window.process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = envVars[key];
+    }
+    
+    // Cross-compatibility: if we have VITE_ prefix, also set others
+    if (key.startsWith('VITE_SUPABASE_URL')) {
+      window.process.env.NEXT_PUBLIC_SUPABASE_URL = envVars[key];
+      window.process.env.SUPABASE_DATABASE_URL = envVars[key];
+    }
+    
+    if (key.startsWith('VITE_SUPABASE_ANON_KEY')) {
+      window.process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = envVars[key];
+      window.process.env.SUPABASE_ANON_KEY = envVars[key];
+    }
+    
+    // Handle NEXT_PUBLIC_ prefix
+    if (key.startsWith('NEXT_PUBLIC_SUPABASE_URL')) {
+      window.process.env.VITE_SUPABASE_URL = envVars[key];
+      window.process.env.SUPABASE_DATABASE_URL = envVars[key];
+    }
+    
+    if (key.startsWith('NEXT_PUBLIC_SUPABASE_ANON_KEY')) {
+      window.process.env.VITE_SUPABASE_ANON_KEY = envVars[key];
+      window.process.env.SUPABASE_ANON_KEY = envVars[key];
     }
   });
   
+  // Debug logging to help diagnose issues
+  console.log('🔧 Environment variable check:');
+  console.log('- SUPABASE_DATABASE_URL:', window.process.env.SUPABASE_DATABASE_URL ? '✅ Set' : '❌ Missing');
+  console.log('- SUPABASE_ANON_KEY:', window.process.env.SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing');
+  console.log('- All loaded vars:', Object.keys(envVars));
+  
   if (Object.keys(envVars).length > 0) {
-    console.log('🔧 Available environment variables:', Object.keys(envVars));
+    console.log('🔧 Environment variables loaded successfully');
     return true;
   } else {
     console.log('📝 No environment variables loaded - using default configuration');

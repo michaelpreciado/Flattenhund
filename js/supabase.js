@@ -31,16 +31,46 @@ async function initSupabase() {
       }
       
       // Try direct environment variable initialization first (highest priority)
-      if (process.env.SUPABASE_DATABASE_URL && process.env.SUPABASE_ANON_KEY) {
-        console.log('🔧 Using direct environment variables for Supabase initialization');
-        const supabaseClientDirect = supabase.createClient(
-          process.env.SUPABASE_DATABASE_URL,
-          process.env.SUPABASE_ANON_KEY
-        );
-        supabaseClient = supabaseClientDirect;
-        isInitialized = true;
-        console.log('✅ Supabase client initialized successfully from process.env');
-        return true;
+      console.log('🔧 Checking for environment variables...');
+      console.log('- process.env.SUPABASE_DATABASE_URL:', typeof process?.env?.SUPABASE_DATABASE_URL);
+      console.log('- process.env.SUPABASE_ANON_KEY:', typeof process?.env?.SUPABASE_ANON_KEY);
+      console.log('- window.SUPABASE_DATABASE_URL:', typeof window.SUPABASE_DATABASE_URL);
+      console.log('- window.SUPABASE_ANON_KEY:', typeof window.SUPABASE_ANON_KEY);
+      
+      // Check multiple possible variable names for Netlify compatibility
+      const supabaseUrl = process?.env?.SUPABASE_DATABASE_URL || 
+                         process?.env?.VITE_SUPABASE_URL || 
+                         process?.env?.NEXT_PUBLIC_SUPABASE_URL ||
+                         window.SUPABASE_DATABASE_URL ||
+                         window.VITE_SUPABASE_URL ||
+                         window.NEXT_PUBLIC_SUPABASE_URL;
+
+      const supabaseKey = process?.env?.SUPABASE_ANON_KEY || 
+                         process?.env?.VITE_SUPABASE_ANON_KEY || 
+                         process?.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+                         window.SUPABASE_ANON_KEY ||
+                         window.VITE_SUPABASE_ANON_KEY ||
+                         window.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (supabaseUrl && supabaseKey) {
+        console.log('🔧 Using environment variables for Supabase initialization');
+        console.log('🔧 URL found:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'Not found');
+        console.log('🔧 Key found:', supabaseKey ? 'Yes (hidden for security)' : 'Not found');
+        
+        try {
+          const supabaseClientDirect = supabase.createClient(supabaseUrl, supabaseKey);
+          supabaseClient = supabaseClientDirect;
+          isInitialized = true;
+          console.log('✅ Supabase client initialized successfully from environment variables');
+          return true;
+        } catch (envError) {
+          console.error('❌ Error creating Supabase client with environment variables:', envError);
+          // Continue to fallback methods
+        }
+      } else {
+        console.log('⚠️ Environment variables not found or incomplete');
+        console.log('- URL available:', !!supabaseUrl);
+        console.log('- Key available:', !!supabaseKey);
       }
       
       // Wait for configuration to be ready (with timeout) - fallback method

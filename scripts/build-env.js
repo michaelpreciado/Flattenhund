@@ -10,10 +10,14 @@ const path = require('path');
 
 // Environment variables to extract (Netlify will have these set)
 const envVars = {
-  VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
-  VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+  // Netlify's Supabase integration variables (primary)
+  SUPABASE_DATABASE_URL: process.env.SUPABASE_DATABASE_URL,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+  // Other common naming patterns (fallbacks)
+  VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_DATABASE_URL,
+  VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY,
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.SUPABASE_DATABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
 };
 
 // Filter out undefined values
@@ -46,5 +50,6 @@ console.log('📦 Variables included:', Object.keys(validEnvVars));
 // If no environment variables were found, create an empty file
 if (Object.keys(validEnvVars).length === 0) {
   console.log('⚠️  No Supabase environment variables found.');
-  console.log('💡 Make sure to set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.');
+  console.log('💡 Make sure to set SUPABASE_DATABASE_URL and SUPABASE_ANON_KEY in Netlify.');
+  console.log('🔧 Alternative: Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in environment variables.');
 } 
