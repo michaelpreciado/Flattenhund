@@ -31,11 +31,11 @@ async function initSupabase() {
       }
       
       // Try direct environment variable initialization first (highest priority)
-      if (process.env.SUPABASE_DATABASE_URL && process.env.PUBLIC_SUPABASE_ANON_KEY) {
+      if (process.env.SUPABASE_DATABASE_URL && process.env.SUPABASE_ANON_KEY) {
         console.log('🔧 Using direct environment variables for Supabase initialization');
         const supabaseClientDirect = supabase.createClient(
           process.env.SUPABASE_DATABASE_URL,
-          process.env.PUBLIC_SUPABASE_ANON_KEY
+          process.env.SUPABASE_ANON_KEY
         );
         supabaseClient = supabaseClientDirect;
         isInitialized = true;
