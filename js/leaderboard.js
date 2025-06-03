@@ -25,7 +25,7 @@ async function initLeaderboard() {
     playerNameInput = document.getElementById('player-name');
     saveScoreButton = document.getElementById('save-score-button');
     
-    // Check leaderboard mode and show status
+    // Check leaderboard mode - only allow online mode
     const isOnlineMode = window.supabaseHelpers && 
                         window.supabaseHelpers.isSupabaseAvailable &&
                         window.supabaseHelpers.isSupabaseAvailable();
@@ -36,9 +36,15 @@ async function initLeaderboard() {
             window.showMobileHint('🌐 Online leaderboard active!', 2000);
         }
     } else {
-        console.log('📱 Leaderboard: Offline mode - scores will be saved locally only');
+        console.log('❌ Leaderboard: Online mode required - leaderboard disabled');
         if (window.showMobileHint) {
-            window.showMobileHint('📱 Offline mode - scores saved locally', 3000);
+            window.showMobileHint('❌ Leaderboard requires online connection', 3000);
+        }
+        
+        // Disable leaderboard functionality when offline
+        if (saveScoreButton) {
+            saveScoreButton.disabled = true;
+            saveScoreButton.textContent = 'ONLINE REQUIRED';
         }
     }
     
@@ -48,15 +54,15 @@ async function initLeaderboard() {
     // Render the leaderboard with the fetched or default data
     renderLeaderboard(); 
     
-    // Add event listener for save button
-    if (saveScoreButton) {
+    // Add event listener for save button only if online
+    if (saveScoreButton && isOnlineMode) {
         saveScoreButton.addEventListener('click', saveHighScore);
     } else {
-        console.warn("Save score button not found in initLeaderboard.");
+        console.warn("Save score disabled - online mode required");
     }
     
-    // Add keyboard support for name input (Enter key to save)
-    if (playerNameInput) {
+    // Add keyboard support for name input (Enter key to save) only if online
+    if (playerNameInput && isOnlineMode) {
         playerNameInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -71,13 +77,13 @@ async function initLeaderboard() {
     }
 }
 
-// Load leaderboard from Supabase with localStorage fallback
+// Load leaderboard exclusively from Supabase (online-only mode)
 async function loadLeaderboard() {
-    console.log('Loading leaderboard...');
-    leaderboard = []; // Default to empty if both sources fail
+    console.log('Loading leaderboard from Supabase (online-only mode)...');
+    leaderboard = []; // Default to empty if Supabase is not available
     
     try {
-        // First, try to load from Supabase
+        // Only try to load from Supabase - no localStorage fallback
         if (window.supabaseHelpers && 
             typeof window.supabaseHelpers.getLeaderboard === 'function' &&
             window.supabaseHelpers.isSupabaseAvailable()) {
@@ -95,60 +101,22 @@ async function loadLeaderboard() {
                 leaderboard = [];
                 return leaderboard;
             } else {
-                console.warn("Supabase data was not valid, falling back to localStorage");
+                console.warn("Supabase data was not valid");
             }
         } else {
-            console.warn("Supabase not configured, using localStorage for leaderboard");
+            console.warn("Supabase not configured - leaderboard disabled in online-only mode");
         }
         
-        // Fallback to localStorage if Supabase is not available or failed
-        console.log('Loading leaderboard from localStorage...');
-        const localData = localStorage.getItem('flattenhundLeaderboard');
-        
-        if (localData) {
-            try {
-                const parsedData = JSON.parse(localData);
-                if (Array.isArray(parsedData)) {
-                    leaderboard = parsedData;
-                    console.log(`📱 Loaded ${leaderboard.length} leaderboard entries from localStorage`);
-                    return leaderboard;
-                }
-            } catch (parseError) {
-                console.error('Error parsing localStorage leaderboard data:', parseError);
-            }
-        }
-        
-        console.log("No leaderboard data found in localStorage either");
+        console.log("No leaderboard data available - online mode required");
         leaderboard = [];
         
     } catch (err) {
-        console.error('Error loading leaderboard:', err);
-        
-        // Final fallback to localStorage
-        try {
-            const localData = localStorage.getItem('flattenhundLeaderboard');
-            if (localData) {
-                const parsedData = JSON.parse(localData);
-                if (Array.isArray(parsedData)) {
-                    leaderboard = parsedData;
-                    console.log(`📱 Fallback: Loaded ${leaderboard.length} entries from localStorage`);
-                    return leaderboard;
-                }
-            }
-        } catch (fallbackError) {
-            console.error('Error loading fallback localStorage data:', fallbackError);
-        }
-        
+        console.error('Error loading leaderboard from Supabase:', err);
         leaderboard = [];
     }
     
     console.log('Final leaderboard data:', leaderboard);
     return leaderboard;
-}
-
-// Save leaderboard to localStorage
-function saveLeaderboardToStorage() {
-    localStorage.setItem('flattenhundLeaderboard', JSON.stringify(leaderboard));
 }
 
 // Render the leaderboard in the DOM
@@ -184,15 +152,25 @@ function actuallyRenderLeaderboard() {
         
         // Check if we have data to display
         if (!leaderboard || leaderboard.length === 0) {
-            // Show empty state message
+            // Show empty state message for online-only mode
             const emptyRow = document.createElement('div');
             emptyRow.className = 'leaderboard-row';
             emptyRow.style.textAlign = 'center';
             emptyRow.style.fontStyle = 'italic';
             emptyRow.style.color = '#999';
+            
+            // Different message based on whether online or offline
+            const isOnline = window.supabaseHelpers && 
+                            window.supabaseHelpers.isSupabaseAvailable &&
+                            window.supabaseHelpers.isSupabaseAvailable();
+            
+            const message = isOnline 
+                ? 'No scores yet. Be the first to play!'
+                : 'Online connection required for leaderboard';
+            
             emptyRow.innerHTML = `
                 <div style="width: 100%; padding: 10px;">
-                    No scores yet. Be the first to play!
+                    ${message}
                 </div>
             `;
             leaderboardEntries.appendChild(emptyRow);
@@ -231,10 +209,10 @@ function actuallyRenderLeaderboard() {
     }
 }
 
-// Check if current score is a new personal best OR qualifies for leaderboard to prompt for name
+// Check if current score qualifies for leaderboard (online-only mode)
 function checkAndPromptForPersonalBest(currentScore) {
     try {
-        console.log('🎯 === HIGH SCORE CHECK START ===');
+        console.log('🎯 === HIGH SCORE CHECK START (Online-Only Mode) ===');
         console.log('🎯 Checking high score qualification for score:', currentScore);
         console.log('📊 Current leaderboard data:', leaderboard);
         console.log('📊 Leaderboard length:', leaderboard ? leaderboard.length : 'null/undefined');
@@ -242,6 +220,19 @@ function checkAndPromptForPersonalBest(currentScore) {
         // Ensure currentScore is a valid number
         if (typeof currentScore !== 'number' || isNaN(currentScore) || currentScore < 0) {
             console.warn('❌ Invalid score provided to checkAndPromptForPersonalBest:', currentScore);
+            return false;
+        }
+        
+        // Check if online mode is available
+        const isOnline = window.supabaseHelpers && 
+                        window.supabaseHelpers.isSupabaseAvailable &&
+                        window.supabaseHelpers.isSupabaseAvailable();
+        
+        if (!isOnline) {
+            console.log('❌ Online mode not available - high score saving disabled');
+            if (window.showMobileHint) {
+                window.showMobileHint('Online connection required to save high scores', 3000);
+            }
             return false;
         }
         
@@ -364,19 +355,19 @@ function checkAndPromptForPersonalBest(currentScore) {
     }
 }
 
-// Save high score exclusively to Supabase
+// Save high score exclusively to Supabase (online-only mode)
 async function saveHighScore() {
     const playerName = playerNameInput.value.trim().toUpperCase() || 'PLAYER';
     const currentScore = window.score; // Global score variable from game.js
     const character = window.selectedCharacter || 'taz'; // Get selected character from game.js
 
     if (typeof currentScore === 'undefined') {
-        console.error("Score is undefined in saveHighScore. Aborting saving to Supabase.");
+        console.error("Score is undefined in saveHighScore. Aborting save.");
         if (newHighScoreForm) newHighScoreForm.classList.add('hidden');
         return;
     }
 
-    console.log(`💾 Saving high score: ${playerName} - ${currentScore} (${character})`);
+    console.log(`💾 Attempting to save high score (online-only): ${playerName} - ${currentScore} (${character})`);
 
     // Show saving state
     const originalButtonText = saveScoreButton.textContent;
@@ -387,16 +378,16 @@ async function saveHighScore() {
     try {
         // Check if Supabase is configured and available
         if (!window.supabaseHelpers) {
-            throw new Error('Supabase helpers not available - database not configured');
+            throw new Error('Supabase helpers not available - online connection required');
         }
         
         if (typeof window.supabaseHelpers.saveScore !== 'function') {
-            throw new Error('Save score function not available');
+            throw new Error('Save score function not available - online connection required');
         }
         
         // Check if Supabase is properly initialized
         if (!window.supabaseHelpers.isSupabaseAvailable()) {
-            throw new Error('Supabase not configured - missing database credentials');
+            throw new Error('Supabase not configured - online connection required');
         }
 
         console.log(`Attempting to save to Supabase: ${playerName}, ${currentScore}, ${character}`);
@@ -422,38 +413,14 @@ async function saveHighScore() {
                 saveScoreButton.textContent = originalButtonText;
             }, 1000);
         } else {
-            throw new Error('Save operation returned false - database save failed');
+            throw new Error('Save operation failed - online connection required');
         }
     } catch (err) {
         console.error('Error saving score to Supabase:', err);
         
-        // Provide specific error messages based on the type of error
-        let errorMessage = 'ERROR - TRY AGAIN';
-        let userMessage = 'Failed to save score. Please try again.';
-        
-        if (err.message.includes('not configured') || err.message.includes('not available')) {
-            errorMessage = 'OFFLINE MODE';
-            userMessage = 'Score saved locally only. Database not configured.';
-            
-            // Save to localStorage as fallback
-            const personalHighScore = parseInt(localStorage.getItem('flattenhundHighScore')) || 0;
-            if (currentScore > personalHighScore) {
-                localStorage.setItem('flattenhundHighScore', currentScore.toString());
-                localStorage.setItem('flattenhundHighScoreName', playerName);
-                console.log('💾 Saved personal high score to localStorage:', playerName, currentScore);
-            }
-            
-            // Save to local leaderboard
-            const localLeaderboard = JSON.parse(localStorage.getItem('flattenhundLeaderboard') || '[]');
-            localLeaderboard.push({ name: playerName, score: currentScore, character: character });
-            localLeaderboard.sort((a, b) => b.score - a.score);
-            localLeaderboard.splice(10); // Keep only top 10
-            localStorage.setItem('flattenhundLeaderboard', JSON.stringify(localLeaderboard));
-            
-            // Update display with local data
-            leaderboard = localLeaderboard;
-            renderLeaderboard();
-        }
+        // Show error message for online-only mode
+        let errorMessage = 'ONLINE REQUIRED';
+        let userMessage = 'Internet connection required to save scores.';
         
         saveScoreButton.textContent = errorMessage;
         
@@ -466,20 +433,8 @@ async function saveHighScore() {
             saveScoreButton.textContent = originalButtonText;
             saveScoreButton.disabled = false;
             playerNameInput.disabled = false;
-            
-            // Only hide form if it was successfully saved locally in offline mode
-            if (errorMessage === 'OFFLINE MODE') {
-                if (newHighScoreForm) {
-                    newHighScoreForm.classList.add('hidden');
-                }
-                if (playerNameInput) {
-                    playerNameInput.value = '';
-                    playerNameInput.disabled = false;
-                }
-                saveScoreButton.disabled = false;
-            }
-            return; // Don't hide form if there was a real error
-        }, 2000);
+            // Don't hide form on error - let user try again if connection improves
+        }, 3000);
         return;
     }
     
@@ -605,62 +560,36 @@ window.leaderboardDebug = {
         console.log('🧪 Testing high score flow with score:', testScore);
         return checkAndPromptForPersonalBest(testScore);
     },
-    // Test saving a score locally
-    testLocalSave: (name = 'TEST', score = 99) => {
-        console.log('🧪 Testing local save...');
-        const localLeaderboard = JSON.parse(localStorage.getItem('flattenhundLeaderboard') || '[]');
-        localLeaderboard.push({ name: name, score: score, character: 'taz' });
-        localLeaderboard.sort((a, b) => b.score - a.score);
-        localLeaderboard.splice(10); // Keep only top 10
-        localStorage.setItem('flattenhundLeaderboard', JSON.stringify(localLeaderboard));
-        console.log('✅ Test score saved locally');
-        
-        // Refresh display
-        leaderboard = localLeaderboard;
-        renderLeaderboard();
-        return localLeaderboard;
-    },
-    // Clear local leaderboard
-    clearLocal: () => {
-        localStorage.removeItem('flattenhundLeaderboard');
-        localStorage.removeItem('flattenhundHighScore');
-        localStorage.removeItem('flattenhundHighScoreName');
-        console.log('✅ Local leaderboard data cleared');
-        
-        // Refresh display
-        leaderboard = [];
-        renderLeaderboard();
-    },
-    // Check current mode
+    // Check current mode (always online-only now)
     getMode: () => {
         const isOnline = window.supabaseHelpers && 
                         window.supabaseHelpers.isSupabaseAvailable &&
                         window.supabaseHelpers.isSupabaseAvailable();
-        return isOnline ? 'online' : 'offline';
+        return isOnline ? 'online' : 'offline-disabled';
     },
     // Show status
     showStatus: () => {
         const mode = window.leaderboardDebug.getMode();
-        const localData = JSON.parse(localStorage.getItem('flattenhundLeaderboard') || '[]');
         
-        console.log('🎯 LEADERBOARD STATUS:');
+        console.log('🎯 LEADERBOARD STATUS (Online-Only Mode):');
         console.log(`Mode: ${mode.toUpperCase()}`);
         console.log(`Current leaderboard entries: ${leaderboard.length}`);
-        console.log(`Local storage entries: ${localData.length}`);
         console.log('Current data:', leaderboard);
         
         if (window.showMobileHint) {
-            window.showMobileHint(`Mode: ${mode} | Entries: ${leaderboard.length}`, 3000);
+            const statusMessage = mode === 'online' 
+                ? `Online | Entries: ${leaderboard.length}` 
+                : 'Offline - Leaderboard Disabled';
+            window.showMobileHint(statusMessage, 3000);
         }
     }
 };
 
 // Add helpful console message
-console.log('🎮 Leaderboard Debug Commands Available:');
+console.log('🎮 Leaderboard Debug Commands Available (Online-Only Mode):');
 console.log('  window.leaderboardDebug.showStatus() - Show current status');
-console.log('  window.leaderboardDebug.testLocalSave() - Test local save');
-console.log('  window.leaderboardDebug.clearLocal() - Clear local data');
 console.log('  window.leaderboardDebug.getMode() - Check if online/offline');
+console.log('  window.leaderboardDebug.testSupabaseConnection() - Test connection');
 
 // Export main functions for other scripts
 window.checkAndPromptForPersonalBest = checkAndPromptForPersonalBest;

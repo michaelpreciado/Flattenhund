@@ -139,3 +139,10 @@ document.addEventListener('click', function initAudioOnClick() {
 window.playFlapSound = playFlapSound;
 window.playHitSound = playHitSound;
 window.playScoreSound = playScoreSound;
+
+// Create gameSounds object for compatibility with game.js
+window.gameSounds = {
+    flap: playFlapSound,
+    hit: playHitSound,
+    score: playScoreSound
+};

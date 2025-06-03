@@ -1079,8 +1079,12 @@ function updatePipeSystem(deltaTime) {
             // Enhanced audio feedback
             if (window.eightBitAudio) {
                 window.eightBitAudio.playScoreSound();
-            } else {
-                scoreSoundContext = window.gameSounds.score();
+            } else if (window.gameSounds && typeof window.gameSounds.score === 'function') {
+                try {
+                    scoreSoundContext = window.gameSounds.score();
+                } catch (error) {
+                    console.warn('Score sound failed:', error);
+                }
             }
         }
     }
