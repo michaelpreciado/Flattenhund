@@ -35,6 +35,12 @@ async function initLeaderboard() {
         if (window.showMobileHint) {
             window.showMobileHint('🌐 Online leaderboard active!', 2000);
         }
+        
+        // Ensure save button is enabled and has correct text
+        if (saveScoreButton) {
+            saveScoreButton.disabled = false;
+            saveScoreButton.textContent = 'SAVE SCORE';
+        }
     } else {
         console.log('❌ Leaderboard: Online mode required - leaderboard disabled');
         if (window.showMobileHint) {
@@ -45,6 +51,15 @@ async function initLeaderboard() {
         if (saveScoreButton) {
             saveScoreButton.disabled = true;
             saveScoreButton.textContent = 'ONLINE REQUIRED';
+            saveScoreButton.style.opacity = '0.5';
+            saveScoreButton.title = 'Internet connection required for leaderboard';
+        }
+        
+        // Disable name input as well
+        if (playerNameInput) {
+            playerNameInput.disabled = true;
+            playerNameInput.placeholder = 'Online connection required';
+            playerNameInput.style.opacity = '0.5';
         }
     }
     
@@ -59,6 +74,16 @@ async function initLeaderboard() {
         saveScoreButton.addEventListener('click', saveHighScore);
     } else {
         console.warn("Save score disabled - online mode required");
+        
+        // Add click handler to show online requirement message
+        if (saveScoreButton) {
+            saveScoreButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (window.showMobileHint) {
+                    window.showMobileHint('🌐 Internet connection required for leaderboard features', 3000);
+                }
+            });
+        }
     }
     
     // Add keyboard support for name input (Enter key to save) only if online
@@ -150,6 +175,23 @@ function actuallyRenderLeaderboard() {
             return;
         }
         
+        // Check online status for UI indicators
+        const isOnline = window.supabaseHelpers && 
+                        window.supabaseHelpers.isSupabaseAvailable &&
+                        window.supabaseHelpers.isSupabaseAvailable();
+        
+        // Update leaderboard title with online status
+        const leaderboardTitle = document.querySelector('.leaderboard-title');
+        if (leaderboardTitle) {
+            if (isOnline) {
+                leaderboardTitle.textContent = '🌐 ONLINE LEADERBOARD';
+                leaderboardTitle.style.color = '#4EC0CA';
+            } else {
+                leaderboardTitle.textContent = '❌ LEADERBOARD OFFLINE';
+                leaderboardTitle.style.color = '#ff6b6b';
+            }
+        }
+        
         // Check if we have data to display
         if (!leaderboard || leaderboard.length === 0) {
             // Show empty state message for online-only mode
@@ -157,22 +199,26 @@ function actuallyRenderLeaderboard() {
             emptyRow.className = 'leaderboard-row';
             emptyRow.style.textAlign = 'center';
             emptyRow.style.fontStyle = 'italic';
-            emptyRow.style.color = '#999';
+            emptyRow.style.padding = '20px 10px';
             
-            // Different message based on whether online or offline
-            const isOnline = window.supabaseHelpers && 
-                            window.supabaseHelpers.isSupabaseAvailable &&
-                            window.supabaseHelpers.isSupabaseAvailable();
+            if (isOnline) {
+                emptyRow.style.color = '#4EC0CA';
+                emptyRow.innerHTML = `
+                    <div style="width: 100%; line-height: 1.4;">
+                        🏆 No scores yet<br>
+                        <small style="font-size: 0.8em; opacity: 0.8;">Be the first to reach the leaderboard!</small>
+                    </div>
+                `;
+            } else {
+                emptyRow.style.color = '#ff6b6b';
+                emptyRow.innerHTML = `
+                    <div style="width: 100%; line-height: 1.4;">
+                        🌐 ONLINE MODE REQUIRED<br>
+                        <small style="font-size: 0.8em; opacity: 0.8;">Connect to internet to view and save scores</small>
+                    </div>
+                `;
+            }
             
-            const message = isOnline 
-                ? 'No scores yet. Be the first to play!'
-                : 'Online connection required for leaderboard';
-            
-            emptyRow.innerHTML = `
-                <div style="width: 100%; padding: 10px;">
-                    ${message}
-                </div>
-            `;
             leaderboardEntries.appendChild(emptyRow);
             return;
         }
@@ -367,7 +413,7 @@ async function saveHighScore() {
         return;
     }
 
-    console.log(`💾 Attempting to save high score (online-only): ${playerName} - ${currentScore} (${character})`);
+    console.log(`🎯 Attempting to save high score (online-only): ${playerName} - ${currentScore} (${character})`);
 
     // Show saving state
     const originalButtonText = saveScoreButton.textContent;
@@ -565,21 +611,27 @@ window.leaderboardDebug = {
         const isOnline = window.supabaseHelpers && 
                         window.supabaseHelpers.isSupabaseAvailable &&
                         window.supabaseHelpers.isSupabaseAvailable();
-        return isOnline ? 'online' : 'offline-disabled';
+        return isOnline ? 'online' : 'offline-leaderboard-disabled';
     },
     // Show status
     showStatus: () => {
         const mode = window.leaderboardDebug.getMode();
+        const isOnline = mode === 'online';
         
         console.log('🎯 LEADERBOARD STATUS (Online-Only Mode):');
-        console.log(`Mode: ${mode.toUpperCase()}`);
+        console.log(`Connection: ${isOnline ? 'ONLINE ✅' : 'OFFLINE ❌'}`);
+        console.log(`Leaderboard Status: ${isOnline ? 'ACTIVE' : 'DISABLED'}`);
         console.log(`Current leaderboard entries: ${leaderboard.length}`);
-        console.log('Current data:', leaderboard);
+        if (isOnline) {
+            console.log('Current data:', leaderboard);
+        } else {
+            console.log('Data: Not available (online connection required)');
+        }
         
         if (window.showMobileHint) {
-            const statusMessage = mode === 'online' 
-                ? `Online | Entries: ${leaderboard.length}` 
-                : 'Offline - Leaderboard Disabled';
+            const statusMessage = isOnline 
+                ? `🌐 Online | ${leaderboard.length} scores` 
+                : '❌ Offline - Leaderboard Disabled';
             window.showMobileHint(statusMessage, 3000);
         }
     }
@@ -587,9 +639,10 @@ window.leaderboardDebug = {
 
 // Add helpful console message
 console.log('🎮 Leaderboard Debug Commands Available (Online-Only Mode):');
-console.log('  window.leaderboardDebug.showStatus() - Show current status');
-console.log('  window.leaderboardDebug.getMode() - Check if online/offline');
-console.log('  window.leaderboardDebug.testSupabaseConnection() - Test connection');
+console.log('  window.leaderboardDebug.showStatus() - Show current online/offline status');
+console.log('  window.leaderboardDebug.getMode() - Check connection status');
+console.log('  window.leaderboardDebug.testSupabaseConnection() - Test Supabase connection');
+console.log('🌐 NOTE: Leaderboard requires internet connection - no offline fallback');
 
 // Export main functions for other scripts
 window.checkAndPromptForPersonalBest = checkAndPromptForPersonalBest;
