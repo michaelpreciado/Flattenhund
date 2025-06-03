@@ -207,8 +207,8 @@ function init() {
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mouseup', handleMouseUp);
     
-    // Initial render (after canvas is properly sized)
-    render();
+    // Start the start screen render loop to keep it responsive
+    startScreenRenderLoop();
     
     // Check if dark mode is enabled
     isDarkMode = document.body.classList.contains('dark-mode');
@@ -482,6 +482,11 @@ function resetGame() {
     canvas.style.filter = 'none';
     canvas.style.transition = 'none';
     
+    // Clear any existing animation frames first
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+    }
+    
     // Hide game over screen and show start screen
     gameOverScreen.style.display = 'none';
     startScreen.style.display = 'flex';
@@ -489,13 +494,21 @@ function resetGame() {
     // Update score display
     scoreDisplay.textContent = '0';
     
-    // Clear any animation frames
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
+    // Start a simple render loop for the start screen to keep it responsive
+    startScreenRenderLoop();
+}
+
+// Simple render loop for start screen to prevent freeze
+function startScreenRenderLoop() {
+    // Only render if we're on the start screen
+    if (!gameStarted && !gameOver && startScreen.style.display === 'flex') {
+        // Add some subtle animation to mario on start screen (gentle bobbing)
+        mario.animationFrameCount += 0.03; // Slow animation
+        mario.y = 300 + Math.sin(mario.animationFrameCount) * 3; // Gentle bobbing motion
+        
+        render();
+        animationFrameId = requestAnimationFrame(startScreenRenderLoop);
     }
-    
-    // Initial render
-    render();
 }
 
 // Game loop
