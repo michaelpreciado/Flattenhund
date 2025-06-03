@@ -66,7 +66,23 @@ async function loadEnvironmentVariables() {
     }
   }
   
-  // 3. Make variables available globally with all naming conventions
+  // 3. Check for manual override in localStorage (for testing)
+  if (Object.keys(envVars).length === 0) {
+    try {
+      const manualUrl = localStorage.getItem('MANUAL_SUPABASE_URL');
+      const manualKey = localStorage.getItem('MANUAL_SUPABASE_KEY');
+      
+      if (manualUrl && manualKey) {
+        envVars.SUPABASE_DATABASE_URL = manualUrl;
+        envVars.SUPABASE_ANON_KEY = manualKey;
+        console.log('🔧 Using manual Supabase credentials from localStorage (testing mode)');
+      }
+    } catch (error) {
+      // Ignore localStorage errors
+    }
+  }
+  
+  // 4. Make variables available globally with all naming conventions
   if (!window.process) window.process = {};
   if (!window.process.env) window.process.env = {};
   
@@ -119,9 +135,43 @@ async function loadEnvironmentVariables() {
     return true;
   } else {
     console.log('📝 No environment variables loaded - using default configuration');
+    console.log('💡 See SUPABASE_SETUP.md for setup instructions');
     return false;
   }
 }
+
+// Helper function to set manual credentials for testing
+window.setManualSupabaseCredentials = function(url, key) {
+  if (!url || !key) {
+    console.error('❌ Both URL and key are required');
+    return false;
+  }
+  
+  try {
+    localStorage.setItem('MANUAL_SUPABASE_URL', url);
+    localStorage.setItem('MANUAL_SUPABASE_KEY', key);
+    console.log('✅ Manual Supabase credentials saved to localStorage');
+    console.log('🔄 Reload the page to use the new credentials');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to save manual credentials:', error);
+    return false;
+  }
+};
+
+// Helper function to clear manual credentials
+window.clearManualSupabaseCredentials = function() {
+  try {
+    localStorage.removeItem('MANUAL_SUPABASE_URL');
+    localStorage.removeItem('MANUAL_SUPABASE_KEY');
+    console.log('✅ Manual Supabase credentials cleared');
+    console.log('🔄 Reload the page to use environment variables');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to clear manual credentials:', error);
+    return false;
+  }
+};
 
 // Initialize environment variables when the script loads
 loadEnvironmentVariables().then(loaded => {

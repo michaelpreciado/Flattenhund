@@ -32,10 +32,8 @@ async function initSupabase() {
       
       // Try direct environment variable initialization first (highest priority)
       console.log('🔧 Checking for environment variables...');
-      console.log('- process.env.SUPABASE_DATABASE_URL:', typeof process?.env?.SUPABASE_DATABASE_URL);
-      console.log('- process.env.SUPABASE_ANON_KEY:', typeof process?.env?.SUPABASE_ANON_KEY);
-      console.log('- window.SUPABASE_DATABASE_URL:', typeof window.SUPABASE_DATABASE_URL);
-      console.log('- window.SUPABASE_ANON_KEY:', typeof window.SUPABASE_ANON_KEY);
+      console.log('- process.env exists:', typeof process !== 'undefined' && typeof process.env !== 'undefined');
+      console.log('- window.NETLIFY_ENV:', typeof window.NETLIFY_ENV, window.NETLIFY_ENV);
       
       // Check multiple possible variable names for Netlify compatibility
       const supabaseUrl = process?.env?.SUPABASE_DATABASE_URL || 
@@ -43,18 +41,29 @@ async function initSupabase() {
                          process?.env?.NEXT_PUBLIC_SUPABASE_URL ||
                          window.SUPABASE_DATABASE_URL ||
                          window.VITE_SUPABASE_URL ||
-                         window.NEXT_PUBLIC_SUPABASE_URL;
+                         window.NEXT_PUBLIC_SUPABASE_URL ||
+                         window.NETLIFY_ENV?.SUPABASE_DATABASE_URL ||
+                         window.NETLIFY_ENV?.VITE_SUPABASE_URL;
 
       const supabaseKey = process?.env?.SUPABASE_ANON_KEY || 
                          process?.env?.VITE_SUPABASE_ANON_KEY || 
                          process?.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
                          window.SUPABASE_ANON_KEY ||
                          window.VITE_SUPABASE_ANON_KEY ||
-                         window.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+                         window.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+                         window.NETLIFY_ENV?.SUPABASE_ANON_KEY ||
+                         window.NETLIFY_ENV?.VITE_SUPABASE_ANON_KEY;
+
+      console.log('🔧 Environment variable sources checked:');
+      console.log('  - process.env.SUPABASE_DATABASE_URL:', !!process?.env?.SUPABASE_DATABASE_URL);
+      console.log('  - window.SUPABASE_DATABASE_URL:', !!window.SUPABASE_DATABASE_URL);
+      console.log('  - window.NETLIFY_ENV.SUPABASE_DATABASE_URL:', !!window.NETLIFY_ENV?.SUPABASE_DATABASE_URL);
+      console.log('  - Final URL found:', !!supabaseUrl);
+      console.log('  - Final Key found:', !!supabaseKey);
 
       if (supabaseUrl && supabaseKey) {
         console.log('🔧 Using environment variables for Supabase initialization');
-        console.log('🔧 URL found:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'Not found');
+        console.log('🔧 URL preview:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'Not found');
         console.log('🔧 Key found:', supabaseKey ? 'Yes (hidden for security)' : 'Not found');
         
         try {
@@ -69,8 +78,10 @@ async function initSupabase() {
         }
       } else {
         console.log('⚠️ Environment variables not found or incomplete');
-        console.log('- URL available:', !!supabaseUrl);
-        console.log('- Key available:', !!supabaseKey);
+        console.log('💡 To fix this:');
+        console.log('   1. For Netlify: Set SUPABASE_DATABASE_URL and SUPABASE_ANON_KEY in your Netlify dashboard');
+        console.log('   2. For local dev: Create a .env file with these variables');
+        console.log('   3. Get your credentials from https://supabase.com/dashboard');
       }
       
       // Wait for configuration to be ready (with timeout) - fallback method
@@ -78,14 +89,15 @@ async function initSupabase() {
       
       if (!configReady || !window.gameConfig) {
         console.warn('⚠️ Supabase configuration not available - running in offline mode');
+        console.info('💡 Game will continue to work, but leaderboard features will be unavailable');
         return false;
       }
       
       const { url, key } = window.gameConfig.supabase;
       
       if (!url || !key || url === 'your_supabase_project_url_here' || key === 'your_supabase_anon_key_here') {
-        console.warn('⚠️ Supabase credentials not configured - leaderboard features disabled');
-        console.info('💡 To enable leaderboard, create a .env file with your Supabase credentials');
+        console.warn('⚠️ Supabase credentials not configured properly');
+        console.info('💡 Update your configuration with real Supabase credentials to enable leaderboard');
         return false;
       }
       
@@ -98,6 +110,7 @@ async function initSupabase() {
       
     } catch (error) {
       console.error('❌ Error initializing Supabase client:', error);
+      console.info('💡 Game continues in offline mode');
       return false;
     } finally {
       initializationPromise = null;
