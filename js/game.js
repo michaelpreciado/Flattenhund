@@ -508,6 +508,17 @@ async function startGame() {
         selectedCharacter = 'taz';
     }
     
+    // Initialize audio for Safari compatibility
+    console.log('🔊 Initializing audio...');
+    try {
+        if (window.initializeAudio) {
+            await window.initializeAudio();
+            console.log('✅ Audio initialized successfully');
+        }
+    } catch (error) {
+        console.warn('⚠️ Audio initialization failed (continuing without audio):', error);
+    }
+    
     console.log('🎮 Setting game state...');
     gameStarted = true;
     gameOver = false;

@@ -1,105 +1,141 @@
-// Simple audio synthesizer for game sounds
+// Audio system for Flattenhund game - Safari compatible
+let audioCtx = null;
+let audioInitialized = false;
+
+// Safari-compatible audio context creation
 function createAudioContext() {
-  return new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx) return audioCtx;
+    
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Handle Safari's requirement for user interaction
+        if (audioCtx.state === 'suspended') {
+            console.log('🔊 Audio context suspended - will resume on first user interaction');
+        }
+        
+        return audioCtx;
+    } catch (error) {
+        console.warn('Audio not supported:', error);
+        return null;
+    }
 }
 
-// Create jump/flap sound (Mario jump sound)
-function createFlapSound() {
-  const audioCtx = createAudioContext();
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  
-  oscillator.type = 'sine';
-  oscillator.frequency.setValueAtTime(784, audioCtx.currentTime); // G5
-  oscillator.frequency.exponentialRampToValueAtTime(1568, audioCtx.currentTime + 0.1); // G6
-  
-  gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-  
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-  
-  oscillator.start();
-  oscillator.stop(audioCtx.currentTime + 0.2);
-  
-  return audioCtx;
+// Initialize audio context only after user interaction (Safari requirement)
+function initializeAudio() {
+    if (audioInitialized) return Promise.resolve();
+    
+    if (!audioCtx) {
+        audioCtx = createAudioContext();
+    }
+    
+    if (!audioCtx) {
+        return Promise.resolve(); // Audio not supported
+    }
+    
+    // Resume audio context if suspended (Safari requirement)
+    if (audioCtx.state === 'suspended') {
+        return audioCtx.resume().then(() => {
+            audioInitialized = true;
+            console.log('🔊 Audio context initialized successfully');
+        }).catch(error => {
+            console.warn('Failed to resume audio context:', error);
+        });
+    } else {
+        audioInitialized = true;
+        console.log('🔊 Audio context ready');
+        return Promise.resolve();
+    }
 }
 
-// Create coin/score sound (Mario coin sound)
-function createScoreSound() {
-  const audioCtx = createAudioContext();
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  
-  oscillator.type = 'square';
-  oscillator.frequency.setValueAtTime(988, audioCtx.currentTime); // B5
-  oscillator.frequency.setValueAtTime(1319, audioCtx.currentTime + 0.1); // E6
-  
-  gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-  
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-  
-  oscillator.start();
-  oscillator.stop(audioCtx.currentTime + 0.2);
-  
-  return audioCtx;
+// Make audio initialization available globally
+window.initializeAudio = initializeAudio;
+
+// Flap sound - 8-bit style
+function playFlapSound() {
+    if (!audioInitialized || !audioCtx) return;
+    
+    try {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.1);
+    } catch (error) {
+        console.warn('Flap sound failed:', error);
+    }
 }
 
-// Create hit/collision sound (Mario bump sound)
-function createHitSound() {
-  const audioCtx = createAudioContext();
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  
-  oscillator.type = 'square';
-  oscillator.frequency.setValueAtTime(196, audioCtx.currentTime); // G3
-  
-  gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-  
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-  
-  oscillator.start();
-  oscillator.stop(audioCtx.currentTime + 0.1);
-  
-  return audioCtx;
+// Hit sound - 8-bit style
+function playHitSound() {
+    if (!audioInitialized || !audioCtx) return;
+    
+    try {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+        
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.3);
+    } catch (error) {
+        console.warn('Hit sound failed:', error);
+    }
 }
 
-// Create game over sound (Mario death sound)
-function createGameOverSound() {
-  const audioCtx = createAudioContext();
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  
-  oscillator.type = 'square';
-  oscillator.frequency.setValueAtTime(494, audioCtx.currentTime); // B4
-  oscillator.frequency.setValueAtTime(466, audioCtx.currentTime + 0.1); // A#4/Bb4
-  oscillator.frequency.setValueAtTime(440, audioCtx.currentTime + 0.2); // A4
-  oscillator.frequency.setValueAtTime(415, audioCtx.currentTime + 0.3); // G#4/Ab4
-  oscillator.frequency.setValueAtTime(392, audioCtx.currentTime + 0.4); // G4
-  oscillator.frequency.setValueAtTime(370, audioCtx.currentTime + 0.5); // F#4/Gb4
-  oscillator.frequency.setValueAtTime(349, audioCtx.currentTime + 0.6); // F4
-  
-  gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-  gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + 0.6);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
-  
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-  
-  oscillator.start();
-  oscillator.stop(audioCtx.currentTime + 0.8);
-  
-  return audioCtx;
+// Score sound - 8-bit style
+function playScoreSound() {
+    if (!audioInitialized || !audioCtx) return;
+    
+    try {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+        oscillator.frequency.setValueAtTime(500, audioCtx.currentTime + 0.1);
+        oscillator.frequency.setValueAtTime(600, audioCtx.currentTime + 0.2);
+        
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.3);
+    } catch (error) {
+        console.warn('Score sound failed:', error);
+    }
 }
 
-// Export sound functions
-window.gameSounds = {
-  flap: createFlapSound,
-  score: createScoreSound,
-  hit: createHitSound,
-  gameOver: createGameOverSound
-};
+// Initialize audio on first user interaction
+document.addEventListener('touchstart', function initAudioOnTouch() {
+    initializeAudio();
+    document.removeEventListener('touchstart', initAudioOnTouch);
+}, { once: true });
+
+document.addEventListener('click', function initAudioOnClick() {
+    initializeAudio();
+    document.removeEventListener('click', initAudioOnClick);
+}, { once: true });
+
+// Expose sound functions globally
+window.playFlapSound = playFlapSound;
+window.playHitSound = playHitSound;
+window.playScoreSound = playScoreSound;
