@@ -24,7 +24,26 @@ async function initSupabase() {
   
   initializationPromise = (async () => {
     try {
-      // Wait for configuration to be ready (with timeout)
+      // Check if the supabase library is loaded first
+      if (typeof supabase === 'undefined') {
+        console.error('❌ Supabase library not loaded');
+        return false;
+      }
+      
+      // Try direct environment variable initialization first (highest priority)
+      if (process.env.SUPABASE_DATABASE_URL && process.env.PUBLIC_SUPABASE_ANON_KEY) {
+        console.log('🔧 Using direct environment variables for Supabase initialization');
+        const supabaseClientDirect = supabase.createClient(
+          process.env.SUPABASE_DATABASE_URL,
+          process.env.PUBLIC_SUPABASE_ANON_KEY
+        );
+        supabaseClient = supabaseClientDirect;
+        isInitialized = true;
+        console.log('✅ Supabase client initialized successfully from process.env');
+        return true;
+      }
+      
+      // Wait for configuration to be ready (with timeout) - fallback method
       const configReady = await window.waitForConfig?.(5000) ?? false;
       
       if (!configReady || !window.gameConfig) {
@@ -40,17 +59,11 @@ async function initSupabase() {
         return false;
       }
       
-      // Check if the supabase library is loaded
-      if (typeof supabase === 'undefined') {
-        console.error('❌ Supabase library not loaded');
-        return false;
-      }
-      
-      // Initialize the client
+      // Initialize the client using configuration system
       supabaseClient = supabase.createClient(url, key);
       isInitialized = true;
       
-      console.log('✅ Supabase client initialized successfully');
+      console.log('✅ Supabase client initialized successfully from config');
       return true;
       
     } catch (error) {
