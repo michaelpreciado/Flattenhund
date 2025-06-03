@@ -532,11 +532,11 @@ window.leaderboardDebug = {
 window.checkAndPromptForPersonalBest = checkAndPromptForPersonalBest;
 window.refreshLeaderboard = refreshLeaderboard;
 
-// Initialize when DOM is loaded (now with async handling)
-document.addEventListener('DOMContentLoaded', function() {
-    // Wait a short time to ensure Supabase is initialized (if needed by supabaseHelpers)
-    setTimeout(async () => { // Make the callback async
-        await initLeaderboard(); // Await initLeaderboard to complete data loading and initial render
+// Initialize leaderboard system manually (to be called by game.js)
+window.initializeLeaderboardSystem = async function() {
+    console.log('🎯 Initializing leaderboard system...');
+    try {
+        await initLeaderboard();
         updateGameEndWithLeaderboard();
         startLeaderboardRefresh();
         
@@ -545,5 +545,9 @@ document.addEventListener('DOMContentLoaded', function() {
         window.refreshLeaderboard = refreshLeaderboard;
         
         console.log('✅ Leaderboard system initialized with global functions exposed');
-    }, 500);
-});
+        return true;
+    } catch (error) {
+        console.error('❌ Error initializing leaderboard system:', error);
+        return false;
+    }
+};

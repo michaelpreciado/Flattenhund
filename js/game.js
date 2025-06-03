@@ -217,6 +217,22 @@ function init() {
     window.updateGameTheme = function(darkModeEnabled) {
         isDarkMode = darkModeEnabled;
     };
+    
+    // Initialize leaderboard system
+    if (window.initializeLeaderboardSystem) {
+        setTimeout(async () => {
+            try {
+                const success = await window.initializeLeaderboardSystem();
+                if (success) {
+                    console.log('✅ Leaderboard system ready for high score checks');
+                } else {
+                    console.warn('⚠️ Leaderboard system initialization failed');
+                }
+            } catch (error) {
+                console.error('❌ Error initializing leaderboard system:', error);
+            }
+        }, 100); // Small delay to ensure all scripts are loaded
+    }
 }
 
 // Function to handle canvas resizing
