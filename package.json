@@ -1,0 +1,15 @@
+{
+  "name": "flattenhund",
+  "version": "1.0.0",
+  "description": "A Flappy Bird-style game with retro pixel art",
+  "scripts": {
+    "build:env": "node scripts/build-env.js",
+    "start": "python3 -m http.server 8000",
+    "dev": "python3 -m http.server 8000"
+  },
+  "keywords": ["game", "javascript", "canvas", "flappy-bird", "pixel-art"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+} 

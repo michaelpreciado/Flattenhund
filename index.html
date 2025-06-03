@@ -110,6 +110,8 @@
     
     <!-- Supabase and core scripts -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Netlify environment variables (only loads if file exists) -->
+<script src="js/netlify-env.js" onerror="console.log('No Netlify env file - using local .env or fallback')"></script>
 <script src="js/env-loader.js"></script>
 <script src="js/config.js"></script>
 <script src="js/supabase.js"></script>
