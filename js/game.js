@@ -38,9 +38,9 @@ const ROTATION_SMOOTHING = 0.75; // Smoother rotation interpolation
 
 // Dynamic Pipe System
 const BASE_PIPE_SPAWN_INTERVAL = 1800; // Base time between pipes (milliseconds)
-const MIN_PIPE_SPAWN_INTERVAL = 1200; // Minimum spawn interval at high difficulty
-const BASE_PIPE_GAP = 160; // Base gap size - Smaller for more challenge
-const MIN_PIPE_GAP = 130; // Minimum gap at high difficulty
+const MIN_PIPE_SPAWN_INTERVAL = 1400; // Minimum spawn interval at high difficulty (increased)
+const BASE_PIPE_GAP = 160; // Base gap size - reasonable for all players
+const MIN_PIPE_GAP = 140; // Minimum gap at high difficulty - never smaller than this
 const GROUND_HEIGHT = 120;
 const MARIO_WIDTH = 48;
 const MARIO_HEIGHT = 48;
@@ -145,10 +145,13 @@ function init() {
     finalScoreDisplay = document.getElementById('final-score');
     highScoreDisplay = document.getElementById('high-score');
     
+    // Make ground globally accessible for drawing functions
+    window.ground = ground;
+    
     // Game initialization
     
     // Set initial canvas dimensions and add resize listener
-    resizeCanvas(); // Initial size
+    resizeCanvas(); // This will set ground.y properly
     window.addEventListener('resize', resizeCanvas);
 
     // For crisp pixel art rendering (will be set in resizeCanvas too)
@@ -161,8 +164,8 @@ function init() {
         window.eightBitAudio.enableMusic(false);
     }
     
-    // Ground position
-    ground.y = canvas.height - GROUND_HEIGHT;
+    // Ground position will be set in resizeCanvas()
+    // (Removed inconsistent initial ground.y calculation)
     
     // Load high score from local storage
     const savedHighScore = localStorage.getItem('flattenhundHighScore');
@@ -204,7 +207,7 @@ function init() {
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mouseup', handleMouseUp);
     
-    // Initial render
+    // Initial render (after canvas is properly sized)
     render();
     
     // Check if dark mode is enabled
@@ -233,6 +236,15 @@ function resizeCanvas() {
     
     // Update ground position
     ground.y = canvas.height / dpr - GROUND_HEIGHT;
+    
+    // Debug logging for ground position
+    console.log('Ground position updated:', {
+        canvasHeight: canvas.height,
+        dpr: dpr,
+        groundHeight: GROUND_HEIGHT,
+        calculatedGroundY: ground.y,
+        visibleCanvasHeight: canvas.height / dpr
+    });
     
     // Ensure crisp pixel art rendering after resize
     ctx.imageSmoothingEnabled = false;
@@ -1345,53 +1357,120 @@ window.addEventListener('load', init);
 
 // Enhanced pipe spawning with dynamic patterns
 function spawnEnhancedPipe() {
-    const pipeWidth = 85 + Math.random() * 10; // Slight width variation
-    let minHeight, maxHeight, gapVariation;
+    const pipeWidth = 85; // Fixed width for consistency
     
-    // Dynamic pipe difficulty based on score
-    if (score < 5) {
-        // Easy pipes for beginners
-        minHeight = 60;
-        gapVariation = 0;
-    } else if (score < 15) {
-        // Medium difficulty
-        minHeight = 70;
-        gapVariation = Math.random() * 10 - 5; // ±5 pixels gap variation
-    } else {
-        // Hard pipes with more variation
-        minHeight = 80 + Math.floor(score / 10) * 5; // Increases with score
-        gapVariation = Math.random() * 20 - 10; // ±10 pixels gap variation
+    // Calculate responsive safe boundaries based on screen size
+    const screenHeight = canvas.height / (Math.min(window.devicePixelRatio || 1, 2));
+    const isSmallScreen = screenHeight < 500;
+    
+    // Scale margins based on screen size
+    const safeTopMargin = isSmallScreen ? Math.max(40, screenHeight * 0.08) : 80;
+    const safeBottomMargin = GROUND_HEIGHT + (isSmallScreen ? Math.max(40, screenHeight * 0.08) : 80);
+    const availableHeight = screenHeight - safeTopMargin - safeBottomMargin;
+    
+    // Scale minimum gap based on screen size
+    let baseMinGap = isSmallScreen ? Math.max(100, screenHeight * 0.2) : 140;
+    let actualGap = Math.max(currentPipeGap, baseMinGap);
+    
+    console.log('Pipe generation params:', {
+        screenHeight,
+        isSmallScreen,
+        safeTopMargin,
+        safeBottomMargin,
+        availableHeight,
+        baseMinGap,
+        actualGap
+    });
+    
+    // Apply controlled difficulty scaling for gap (only slight reduction)
+    if (score >= 10) {
+        const maxReduction = isSmallScreen ? 15 : 20; // Less reduction on small screens
+        const reduction = Math.min(maxReduction, Math.floor(score / 5) * 2);
+        const absoluteMinGap = isSmallScreen ? Math.max(80, screenHeight * 0.15) : 120;
+        actualGap = Math.max(actualGap - reduction, absoluteMinGap);
     }
     
-    const actualGap = currentPipeGap + gapVariation;
-    maxHeight = canvas.height - actualGap - minHeight - GROUND_HEIGHT;
+    // Calculate the maximum possible top pipe height
+    const maxTopHeight = availableHeight - actualGap;
     
-    // Ensure reasonable bounds
-    maxHeight = Math.max(maxHeight, minHeight + 20);
+    // Ensure we have enough room for a reasonable pipe configuration
+    const minPipeHeight = isSmallScreen ? 40 : 60;
+    if (maxTopHeight < minPipeHeight) {
+        console.warn('Cannot create pipe: insufficient height available', {
+            maxTopHeight,
+            minPipeHeight,
+            availableHeight,
+            actualGap
+        });
+        return; // Don't create pipe if impossible
+    }
     
-    const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+    // Calculate a reasonable range for top pipe height
+    const minTopHeight = Math.max(minPipeHeight, safeTopMargin);
+    const adjustedMaxHeight = Math.min(maxTopHeight, availableHeight - minPipeHeight);
+    
+    // Generate top pipe height within safe bounds
+    const topHeight = minTopHeight + Math.random() * (adjustedMaxHeight - minTopHeight);
     const bottomY = topHeight + actualGap;
     
-    // Enhanced pipe object with additional properties
+    // Validate the configuration before creating the pipe (using screen height not canvas height)
+    if (bottomY + minPipeHeight > screenHeight - GROUND_HEIGHT) {
+        console.warn('Pipe configuration invalid: bottom pipe would be too low', {
+            bottomY,
+            minPipeHeight,
+            screenHeight,
+            groundHeight: GROUND_HEIGHT
+        });
+        return; // Don't create invalid pipe
+    }
+    
+    if (topHeight < minTopHeight) {
+        console.warn('Pipe configuration invalid: top pipe would be too short', {
+            topHeight,
+            minTopHeight
+        });
+        return; // Don't create invalid pipe
+    }
+    
+    // Create validated pipe object (use canvas dimensions for actual rendering)
     const newPipe = {
         x: canvas.width,
         width: pipeWidth,
-        actualGap: actualGap, // Store the actual gap used
-        difficulty: difficultyMultiplier, // Store difficulty when created
+        actualGap: actualGap,
+        difficulty: difficultyMultiplier,
         top: {
+            x: canvas.width,
             y: 0,
             height: topHeight,
             width: pipeWidth
         },
         bottom: {
+            x: canvas.width,
             y: bottomY,
-            height: canvas.height - bottomY,
+            height: screenHeight - bottomY - GROUND_HEIGHT,
             width: pipeWidth
         },
         passed: false,
-        // Add pipe scoring multiplier for difficult pipes
-        scoreMultiplier: actualGap < currentPipeGap - 5 ? 2 : 1
+        scoreMultiplier: actualGap < baseMinGap + 20 ? 2 : 1 // Bonus for tight gaps relative to screen
     };
+    
+    // Final validation before adding
+    if (newPipe.bottom.height < minPipeHeight) {
+        console.warn('Bottom pipe too short, rejecting pipe', {
+            bottomHeight: newPipe.bottom.height,
+            minPipeHeight
+        });
+        return;
+    }
+    
+    console.log('Generated valid pipe:', {
+        topHeight: newPipe.top.height,
+        gap: actualGap,
+        bottomY: newPipe.bottom.y,
+        bottomHeight: newPipe.bottom.height,
+        screenHeight,
+        isSmallScreen
+    });
     
     pipes.push(newPipe);
 }

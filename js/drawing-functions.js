@@ -21,25 +21,28 @@ function drawBackground() {
 
 // Draw the ground
 function drawGround() {
+    // Use the correctly calculated ground.y position instead of canvas.height
+    const groundY = window.ground ? window.ground.y : (canvas.height - GROUND_HEIGHT);
+    
     // Draw the dirt part of the ground
     ctx.fillStyle = isDarkMode ? '#5E4B2B' : '#DED895'; // Dark or light dirt color
-    ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+    ctx.fillRect(0, groundY, canvas.width, GROUND_HEIGHT);
     
     // Draw the grass top of the ground (pixelated)
     ctx.fillStyle = isDarkMode ? '#2A623D' : '#8CC453'; // Dark or light grass color
-    ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, 20);
+    ctx.fillRect(0, groundY, canvas.width, 20);
     
     // Add pixelated grass details for 8-bit effect
     ctx.fillStyle = isDarkMode ? '#3A724D' : '#A2D65B'; // Lighter green for grass highlights
     for (let x = 0; x < canvas.width; x += 12) {
         const grassHeight = Math.floor(Math.random() * 4) + 2;
-        ctx.fillRect(x, canvas.height - GROUND_HEIGHT - grassHeight, 4, grassHeight);
+        ctx.fillRect(x, groundY - grassHeight, 4, grassHeight);
     }
     
     // Add pixelated dirt details
     ctx.fillStyle = isDarkMode ? '#4E3B1B' : '#D5C878'; // Slightly darker dirt for texture
     for (let x = 0; x < canvas.width; x += 16) {
-        for (let y = canvas.height - GROUND_HEIGHT + 30; y < canvas.height; y += 16) {
+        for (let y = groundY + 30; y < groundY + GROUND_HEIGHT; y += 16) {
             if (Math.random() > 0.7) {
                 ctx.fillRect(x, y, 8, 8);
             }
@@ -103,6 +106,9 @@ function drawPipe(pipe) {
 
 // Draw city silhouette (pixelated buildings)
 function drawCitySilhouette() {
+    // Use the correctly calculated ground.y position
+    const groundY = window.ground ? window.ground.y : (canvas.height - GROUND_HEIGHT);
+    
     ctx.fillStyle = isDarkMode ? '#1A3A5A' : '#3A8BBB'; // Darker blue for night mode
     
     // Create a series of buildings with different heights
@@ -115,7 +121,7 @@ function drawCitySilhouette() {
         const height = 40 + Math.random() * maxHeight;
         
         // Draw a pixelated building
-        ctx.fillRect(xPos, canvas.height - GROUND_HEIGHT - height, width, height);
+        ctx.fillRect(xPos, groundY - height, width, height);
         
         // Add some windows (small squares)
         // More windows lit up at night than during day
@@ -126,8 +132,8 @@ function drawCitySilhouette() {
         const windowSpacing = 10;
         
         for (let wx = xPos + windowSpacing; wx < xPos + width - windowSize; wx += windowSpacing) {
-            for (let wy = canvas.height - GROUND_HEIGHT - height + windowSpacing; 
-                 wy < canvas.height - GROUND_HEIGHT - windowSize; 
+            for (let wy = groundY - height + windowSpacing; 
+                 wy < groundY - windowSize; 
                  wy += windowSpacing) {
                 // More windows lit at night (50%) than during day (30%)
                 if (Math.random() < (isDarkMode ? 0.5 : 0.3)) {
