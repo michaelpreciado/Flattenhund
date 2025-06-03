@@ -218,16 +218,26 @@ function init() {
         });
         
         e.preventDefault();
+        e.stopPropagation(); // Prevent event bubbling
+        
+        // Visual feedback for mobile users
+        startBtn.style.backgroundColor = '#ff5722';
+        setTimeout(() => {
+            startBtn.style.backgroundColor = '';
+        }, 200);
         
         if (!selectedCharacter) {
             console.warn('⚠️ No character selected yet');
-            alert('Please select a character first!'); // Fallback alert for debugging
+            // Show visual feedback instead of alert
+            startBtn.textContent = 'SELECT CHARACTER FIRST!';
+            setTimeout(() => {
+                startBtn.textContent = 'Start Game';
+            }, 2000);
             return;
         }
         
         if (startBtn.disabled) {
             console.warn('⚠️ Start button is disabled');
-            alert('Start button is disabled!'); // Fallback alert for debugging
             return;
         }
         
@@ -239,36 +249,55 @@ function init() {
     if (chooseTazBtn) {
         chooseTazBtn.addEventListener('click', (e) => {
             console.log('🖱️ Taz click event');
+            e.preventDefault();
+            e.stopPropagation();
             selectTaz();
         });
         chooseTazBtn.addEventListener('touchend', (e) => {
             console.log('👆 Taz touch event');
             e.preventDefault();
+            e.stopPropagation();
             selectTaz();
         });
         chooseTazBtn.addEventListener('touchstart', (e) => {
             console.log('👆 Taz touchstart event');
             e.preventDefault();
+            // Visual feedback
+            chooseTazBtn.style.transform = 'scale(0.95)';
+        });
+        chooseTazBtn.addEventListener('touchcancel', (e) => {
+            console.log('👆 Taz touchcancel event');
+            chooseTazBtn.style.transform = '';
         });
     }
     
     if (chooseChloeBtn) {
         chooseChloeBtn.addEventListener('click', (e) => {
             console.log('🖱️ Chloe click event');
+            e.preventDefault();
+            e.stopPropagation();
             selectChloe();
         });
         chooseChloeBtn.addEventListener('touchend', (e) => {
             console.log('👆 Chloe touch event');
             e.preventDefault();
+            e.stopPropagation();
             selectChloe();
         });
         chooseChloeBtn.addEventListener('touchstart', (e) => {
             console.log('👆 Chloe touchstart event');
             e.preventDefault();
+            // Visual feedback
+            chooseChloeBtn.style.transform = 'scale(0.95)';
+        });
+        chooseChloeBtn.addEventListener('touchcancel', (e) => {
+            console.log('👆 Chloe touchcancel event');
+            chooseChloeBtn.style.transform = '';
         });
     }
     
     if (startBtn) {
+        // Add multiple event types for better mobile compatibility
         startBtn.addEventListener('click', (e) => {
             console.log('🖱️ Start button click event');
             handleStartGame(e);
@@ -280,6 +309,33 @@ function init() {
         startBtn.addEventListener('touchstart', (e) => {
             console.log('👆 Start button touchstart event');
             e.preventDefault();
+            // Visual feedback
+            if (!startBtn.disabled) {
+                startBtn.style.transform = 'scale(1.02)';
+                startBtn.style.backgroundColor = '#d32f2f';
+            }
+        });
+        startBtn.addEventListener('touchcancel', (e) => {
+            console.log('👆 Start button touchcancel event');
+            startBtn.style.transform = '';
+            startBtn.style.backgroundColor = '';
+        });
+        
+        // Add tap event for iOS devices
+        let tapTimeout;
+        startBtn.addEventListener('touchstart', (e) => {
+            tapTimeout = setTimeout(() => {
+                console.log('👆 Start button long tap detected');
+                if (!startBtn.disabled) {
+                    handleStartGame(e);
+                }
+            }, 500);
+        });
+        startBtn.addEventListener('touchend', (e) => {
+            clearTimeout(tapTimeout);
+        });
+        startBtn.addEventListener('touchmove', (e) => {
+            clearTimeout(tapTimeout);
         });
     }
     
