@@ -25,6 +25,23 @@ async function initLeaderboard() {
     playerNameInput = document.getElementById('player-name');
     saveScoreButton = document.getElementById('save-score-button');
     
+    // Check leaderboard mode and show status
+    const isOnlineMode = window.supabaseHelpers && 
+                        window.supabaseHelpers.isSupabaseAvailable &&
+                        window.supabaseHelpers.isSupabaseAvailable();
+    
+    if (isOnlineMode) {
+        console.log('🌐 Leaderboard: Online mode - scores will be saved to cloud database');
+        if (window.showMobileHint) {
+            window.showMobileHint('🌐 Online leaderboard active!', 2000);
+        }
+    } else {
+        console.log('📱 Leaderboard: Offline mode - scores will be saved locally only');
+        if (window.showMobileHint) {
+            window.showMobileHint('📱 Offline mode - scores saved locally', 3000);
+        }
+    }
+    
     // Load leaderboard data (awaiting the async operation)
     await loadLeaderboard(); 
     
@@ -54,32 +71,74 @@ async function initLeaderboard() {
     }
 }
 
-// Load leaderboard exclusively from Supabase
+// Load leaderboard from Supabase with localStorage fallback
 async function loadLeaderboard() {
-    console.log('Loading leaderboard from Supabase...');
-    leaderboard = []; // Default to empty if Supabase fails or is unavailable
+    console.log('Loading leaderboard...');
+    leaderboard = []; // Default to empty if both sources fail
+    
     try {
-        if (window.supabaseHelpers && typeof window.supabaseHelpers.getLeaderboard === 'function') {
+        // First, try to load from Supabase
+        if (window.supabaseHelpers && 
+            typeof window.supabaseHelpers.getLeaderboard === 'function' &&
+            window.supabaseHelpers.isSupabaseAvailable()) {
+            
             console.log('Supabase helpers available, fetching leaderboard...');
             const supabaseData = await window.supabaseHelpers.getLeaderboard(10);
             console.log('Supabase leaderboard data received:', supabaseData);
             
             if (Array.isArray(supabaseData) && supabaseData.length > 0) {
                 leaderboard = supabaseData; 
-                console.log(`Loaded ${leaderboard.length} leaderboard entries from Supabase`);
+                console.log(`✅ Loaded ${leaderboard.length} leaderboard entries from Supabase`);
+                return leaderboard;
             } else if (Array.isArray(supabaseData) && supabaseData.length === 0) {
                 console.log("Supabase returned empty leaderboard - no scores yet");
                 leaderboard = [];
+                return leaderboard;
             } else {
-                console.warn("Supabase data was not an array or was null/undefined. Leaderboard will be empty.");
-                leaderboard = [];
+                console.warn("Supabase data was not valid, falling back to localStorage");
             }
         } else {
-            console.warn("Supabase helpers or getLeaderboard function not available. Leaderboard will be empty.");
-            leaderboard = [];
+            console.warn("Supabase not configured, using localStorage for leaderboard");
         }
+        
+        // Fallback to localStorage if Supabase is not available or failed
+        console.log('Loading leaderboard from localStorage...');
+        const localData = localStorage.getItem('flattenhundLeaderboard');
+        
+        if (localData) {
+            try {
+                const parsedData = JSON.parse(localData);
+                if (Array.isArray(parsedData)) {
+                    leaderboard = parsedData;
+                    console.log(`📱 Loaded ${leaderboard.length} leaderboard entries from localStorage`);
+                    return leaderboard;
+                }
+            } catch (parseError) {
+                console.error('Error parsing localStorage leaderboard data:', parseError);
+            }
+        }
+        
+        console.log("No leaderboard data found in localStorage either");
+        leaderboard = [];
+        
     } catch (err) {
-        console.error('Error loading leaderboard from Supabase:', err);
+        console.error('Error loading leaderboard:', err);
+        
+        // Final fallback to localStorage
+        try {
+            const localData = localStorage.getItem('flattenhundLeaderboard');
+            if (localData) {
+                const parsedData = JSON.parse(localData);
+                if (Array.isArray(parsedData)) {
+                    leaderboard = parsedData;
+                    console.log(`📱 Fallback: Loaded ${leaderboard.length} entries from localStorage`);
+                    return leaderboard;
+                }
+            }
+        } catch (fallbackError) {
+            console.error('Error loading fallback localStorage data:', fallbackError);
+        }
+        
         leaderboard = [];
     }
     
@@ -326,51 +385,100 @@ async function saveHighScore() {
     playerNameInput.disabled = true;
 
     try {
-        if (window.supabaseHelpers && typeof window.supabaseHelpers.saveScore === 'function') {
-            console.log(`Attempting to save to Supabase: ${playerName}, ${currentScore}, ${character}`);
-            const saveResult = await window.supabaseHelpers.saveScore(playerName, currentScore, character);
+        // Check if Supabase is configured and available
+        if (!window.supabaseHelpers) {
+            throw new Error('Supabase helpers not available - database not configured');
+        }
+        
+        if (typeof window.supabaseHelpers.saveScore !== 'function') {
+            throw new Error('Save score function not available');
+        }
+        
+        // Check if Supabase is properly initialized
+        if (!window.supabaseHelpers.isSupabaseAvailable()) {
+            throw new Error('Supabase not configured - missing database credentials');
+        }
+
+        console.log(`Attempting to save to Supabase: ${playerName}, ${currentScore}, ${character}`);
+        const saveResult = await window.supabaseHelpers.saveScore(playerName, currentScore, character);
+        
+        if (saveResult) {
+            console.log("✅ Score saved to Supabase successfully.");
             
-            if (saveResult) {
-                console.log("✅ Score saved to Supabase successfully.");
-                
-                // Show success feedback
-                saveScoreButton.textContent = 'SAVED!';
-                
-                // Mobile haptic feedback for success
-                if (window.triggerHaptic) {
-                    window.triggerHaptic('success');
-                }
-                
-                // Mobile hint for success
-                if (window.showMobileHint) {
-                    window.showMobileHint('Score saved to leaderboard!', 2000);
-                }
-                
-                setTimeout(() => {
-                    saveScoreButton.textContent = originalButtonText;
-                }, 1000);
-            } else {
-                throw new Error('Save operation returned false');
+            // Show success feedback
+            saveScoreButton.textContent = 'SAVED!';
+            
+            // Mobile haptic feedback for success
+            if (window.triggerHaptic) {
+                window.triggerHaptic('success');
             }
-        } else {
-            console.error("Supabase helpers or saveScore function not available. Cannot save score.");
-            saveScoreButton.textContent = 'ERROR - TRY AGAIN';
+            
+            // Mobile hint for success
+            if (window.showMobileHint) {
+                window.showMobileHint('Score saved to leaderboard!', 2000);
+            }
+            
             setTimeout(() => {
                 saveScoreButton.textContent = originalButtonText;
-                saveScoreButton.disabled = false;
-                playerNameInput.disabled = false;
-                return; // Don't hide form if there was an error
-            }, 2000);
-            return;
+            }, 1000);
+        } else {
+            throw new Error('Save operation returned false - database save failed');
         }
     } catch (err) {
         console.error('Error saving score to Supabase:', err);
-        saveScoreButton.textContent = 'ERROR - TRY AGAIN';
+        
+        // Provide specific error messages based on the type of error
+        let errorMessage = 'ERROR - TRY AGAIN';
+        let userMessage = 'Failed to save score. Please try again.';
+        
+        if (err.message.includes('not configured') || err.message.includes('not available')) {
+            errorMessage = 'OFFLINE MODE';
+            userMessage = 'Score saved locally only. Database not configured.';
+            
+            // Save to localStorage as fallback
+            const personalHighScore = parseInt(localStorage.getItem('flattenhundHighScore')) || 0;
+            if (currentScore > personalHighScore) {
+                localStorage.setItem('flattenhundHighScore', currentScore.toString());
+                localStorage.setItem('flattenhundHighScoreName', playerName);
+                console.log('💾 Saved personal high score to localStorage:', playerName, currentScore);
+            }
+            
+            // Save to local leaderboard
+            const localLeaderboard = JSON.parse(localStorage.getItem('flattenhundLeaderboard') || '[]');
+            localLeaderboard.push({ name: playerName, score: currentScore, character: character });
+            localLeaderboard.sort((a, b) => b.score - a.score);
+            localLeaderboard.splice(10); // Keep only top 10
+            localStorage.setItem('flattenhundLeaderboard', JSON.stringify(localLeaderboard));
+            
+            // Update display with local data
+            leaderboard = localLeaderboard;
+            renderLeaderboard();
+        }
+        
+        saveScoreButton.textContent = errorMessage;
+        
+        // Mobile hint for error
+        if (window.showMobileHint) {
+            window.showMobileHint(userMessage, 3000);
+        }
+        
         setTimeout(() => {
             saveScoreButton.textContent = originalButtonText;
             saveScoreButton.disabled = false;
             playerNameInput.disabled = false;
-            return; // Don't hide form if there was an error  
+            
+            // Only hide form if it was successfully saved locally in offline mode
+            if (errorMessage === 'OFFLINE MODE') {
+                if (newHighScoreForm) {
+                    newHighScoreForm.classList.add('hidden');
+                }
+                if (playerNameInput) {
+                    playerNameInput.value = '';
+                    playerNameInput.disabled = false;
+                }
+                saveScoreButton.disabled = false;
+            }
+            return; // Don't hide form if there was a real error
         }, 2000);
         return;
     }
@@ -497,40 +605,66 @@ window.leaderboardDebug = {
         console.log('🧪 Testing high score flow with score:', testScore);
         return checkAndPromptForPersonalBest(testScore);
     },
-    showTestForm: () => {
-        console.log('🧪 Showing high score form for testing');
-        if (newHighScoreForm) {
-            newHighScoreForm.classList.remove('hidden');
-            if (playerNameInput) {
-                playerNameInput.focus();
-            }
+    // Test saving a score locally
+    testLocalSave: (name = 'TEST', score = 99) => {
+        console.log('🧪 Testing local save...');
+        const localLeaderboard = JSON.parse(localStorage.getItem('flattenhundLeaderboard') || '[]');
+        localLeaderboard.push({ name: name, score: score, character: 'taz' });
+        localLeaderboard.sort((a, b) => b.score - a.score);
+        localLeaderboard.splice(10); // Keep only top 10
+        localStorage.setItem('flattenhundLeaderboard', JSON.stringify(localLeaderboard));
+        console.log('✅ Test score saved locally');
+        
+        // Refresh display
+        leaderboard = localLeaderboard;
+        renderLeaderboard();
+        return localLeaderboard;
+    },
+    // Clear local leaderboard
+    clearLocal: () => {
+        localStorage.removeItem('flattenhundLeaderboard');
+        localStorage.removeItem('flattenhundHighScore');
+        localStorage.removeItem('flattenhundHighScoreName');
+        console.log('✅ Local leaderboard data cleared');
+        
+        // Refresh display
+        leaderboard = [];
+        renderLeaderboard();
+    },
+    // Check current mode
+    getMode: () => {
+        const isOnline = window.supabaseHelpers && 
+                        window.supabaseHelpers.isSupabaseAvailable &&
+                        window.supabaseHelpers.isSupabaseAvailable();
+        return isOnline ? 'online' : 'offline';
+    },
+    // Show status
+    showStatus: () => {
+        const mode = window.leaderboardDebug.getMode();
+        const localData = JSON.parse(localStorage.getItem('flattenhundLeaderboard') || '[]');
+        
+        console.log('🎯 LEADERBOARD STATUS:');
+        console.log(`Mode: ${mode.toUpperCase()}`);
+        console.log(`Current leaderboard entries: ${leaderboard.length}`);
+        console.log(`Local storage entries: ${localData.length}`);
+        console.log('Current data:', leaderboard);
+        
+        if (window.showMobileHint) {
+            window.showMobileHint(`Mode: ${mode} | Entries: ${leaderboard.length}`, 3000);
         }
-    },
-    hideTestForm: () => {
-        console.log('🧪 Hiding high score form');
-        if (newHighScoreForm) {
-            newHighScoreForm.classList.add('hidden');
-        }
-    },
-    // NEW: Quick test for any score
-    testAnyScore: () => {
-        console.log('🧪 Testing high score flow with score 999...');
-        return checkAndPromptForPersonalBest(999);
-    },
-    // NEW: Check if elements exist
-    checkElements: () => {
-        console.log('🔍 === ELEMENT CHECK ===');
-        console.log('🔍 newHighScoreForm:', document.getElementById('new-high-score-form'));
-        console.log('🔍 playerNameInput:', document.getElementById('player-name'));
-        console.log('🔍 saveScoreButton:', document.getElementById('save-score-button'));
-        console.log('🔍 leaderboardEntries:', document.getElementById('leaderboard-entries'));
-        console.log('🔍 gameOverScreen:', document.getElementById('game-over'));
     }
 };
 
-// IMPORTANT: Expose high score check function globally for game integration
+// Add helpful console message
+console.log('🎮 Leaderboard Debug Commands Available:');
+console.log('  window.leaderboardDebug.showStatus() - Show current status');
+console.log('  window.leaderboardDebug.testLocalSave() - Test local save');
+console.log('  window.leaderboardDebug.clearLocal() - Clear local data');
+console.log('  window.leaderboardDebug.getMode() - Check if online/offline');
+
+// Export main functions for other scripts
 window.checkAndPromptForPersonalBest = checkAndPromptForPersonalBest;
-window.refreshLeaderboard = refreshLeaderboard;
+window.initLeaderboard = initLeaderboard;
 
 // Initialize leaderboard system manually (to be called by game.js)
 window.initializeLeaderboardSystem = async function() {
