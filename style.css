@@ -107,6 +107,14 @@ img.character-img {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    /* Enhanced mobile touch handling */
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .character-btn:active {
@@ -453,6 +461,11 @@ button, .primary-button {
     min-height: var(--mobile-touch-size);
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 button:active, .primary-button:active {

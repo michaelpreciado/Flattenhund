@@ -182,21 +182,56 @@ function init() {
     const chooseChloeBtn = document.getElementById('choose-chloe');
     const startBtn = document.getElementById('start-button');
     
-    chooseTazBtn.addEventListener('click', () => {
+    // Function to select Taz character
+    const selectTaz = () => {
         selectedCharacter = 'taz';
         chooseTazBtn.classList.add('selected');
         chooseChloeBtn.classList.remove('selected');
         startBtn.disabled = false;
-    });
-    chooseChloeBtn.addEventListener('click', () => {
+        console.log('✅ Taz character selected');
+    };
+    
+    // Function to select Chloe character
+    const selectChloe = () => {
         selectedCharacter = 'chloe';
         chooseChloeBtn.classList.add('selected');
         chooseTazBtn.classList.remove('selected');
         startBtn.disabled = false;
+        console.log('✅ Chloe character selected');
+    };
+    
+    // Add both click and touch event listeners for better mobile compatibility
+    chooseTazBtn.addEventListener('click', selectTaz);
+    chooseTazBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        selectTaz();
     });
-
-    // Event listeners
-    document.getElementById('start-button').addEventListener('click', startGame);
+    
+    chooseChloeBtn.addEventListener('click', selectChloe);
+    chooseChloeBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        selectChloe();
+    });
+    
+    // Enhanced start button event handling
+    const handleStartGame = (e) => {
+        e.preventDefault();
+        if (selectedCharacter && !startBtn.disabled) {
+            startGame();
+        } else if (!selectedCharacter) {
+            console.warn('⚠️ No character selected yet');
+            // Visual feedback for mobile users
+            if (window.showMobileHint) {
+                window.showMobileHint('Please select a character first!', 2000);
+            }
+        }
+    };
+    
+    // Add both click and touch events for start button
+    startBtn.addEventListener('click', handleStartGame);
+    startBtn.addEventListener('touchend', handleStartGame);
+    
+    // Restart button event listener
     document.getElementById('restart-button').addEventListener('click', resetGame);
     
     // Input handlers
