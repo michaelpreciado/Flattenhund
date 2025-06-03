@@ -18,10 +18,60 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Cache-Control = "public, max-age=0, must-revalidate"
 
+# Aggressive caching for static assets
 [[headers]]
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache JavaScript files for better performance
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+# Cache CSS files
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+# Cache fonts
+[[headers]]
+  for = "/assets/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Service Worker
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+# Enable gzip compression for text files
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Content-Encoding = "gzip"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Content-Encoding = "gzip"
+
+[[headers]]
+  for = "*.html"
+  [headers.values]
+    Content-Encoding = "gzip"
+
+# Enable image optimization
+[build.processing.images]
+  compress = true
+
+# Enable HTML minification
+[build.processing.html]
+  pretty_urls = true
 
 # Inject environment variables into the build for browser access
 [build.processing]
@@ -43,11 +93,6 @@
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-
-# Environment variable injection script
-# This creates a script that makes Netlify env vars available to the browser
-[build.processing.html]
-  pretty_urls = true
 
 # Custom build hook to inject environment variables
 [[plugins]]

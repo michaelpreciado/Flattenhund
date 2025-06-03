@@ -20,18 +20,114 @@
     <meta name="referrer" content="no-referrer">
     
     <title>FLATTENHUND</title>
+    
+    <!-- Critical CSS loaded synchronously -->
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="css/dark-mode.css">
-    <!-- Pixel font preloading for faster rendering -->
+    
+    <!-- Preload critical assets for immediate game start -->
     <link rel="preload" href="assets/fonts/PressStart2P-Regular.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="assets/images/taz.png" as="image">
+    <link rel="preload" href="assets/images/chloe.png" as="image">
+    <link rel="preload" href="assets/images/background.png" as="image">
+    <link rel="preload" href="assets/images/ground.png" as="image">
+    
+    <!-- Preload critical game assets -->
+    <link rel="preload" href="assets/images/pipe-top.png" as="image">
+    <link rel="preload" href="assets/images/pipe-bottom.png" as="image">
+    
+    <!-- Preload critical scripts -->
+    <link rel="preload" href="js/game.js" as="script">
+    <link rel="preload" href="js/drawing-functions.js" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script" crossorigin>
     
     <!-- Mobile icons -->
     <link rel="apple-touch-icon" sizes="180x180" href="assets/images/icon-180.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/icon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/images/icon-16.png">
     <link rel="manifest" href="manifest.json">
+    
+    <!-- Loading screen styles (inline for fastest display) -->
+    <style>
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            font-family: 'Courier New', monospace;
+            color: white;
+            transition: opacity 0.5s ease-out;
+        }
+        
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-logo {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            animation: pulse 2s infinite;
+        }
+        
+        .loading-progress {
+            width: 300px;
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        
+        .loading-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+        
+        .loading-text {
+            font-size: 1rem;
+            opacity: 0.8;
+            animation: blink 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 0.8; }
+            51%, 100% { opacity: 0.4; }
+        }
+        
+        @media (max-width: 480px) {
+            .loading-logo { font-size: 2rem; }
+            .loading-progress { width: 250px; }
+        }
+    </style>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loading-screen">
+        <div class="loading-logo">FLATTENHUND</div>
+        <div class="loading-progress">
+            <div class="loading-bar" id="loading-bar"></div>
+        </div>
+        <div class="loading-text" id="loading-text">Loading assets...</div>
+    </div>
+
     <!-- Mobile-specific touch overlay for better responsiveness -->
     <div class="mobile-touch-overlay" id="mobile-touch-overlay"></div>
     
@@ -108,25 +204,178 @@
         </div>
     </div>
     
-    <!-- Supabase and core scripts -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- Netlify environment variables (only loads if file exists) -->
-<script src="js/netlify-env.js" onerror="console.log('No Netlify env file - using local .env or fallback')"></script>
-<script src="js/env-loader.js"></script>
-<script src="js/config.js"></script>
-<script src="js/supabase.js"></script>
+    <!-- Loading and performance management -->
+    <script src="js/performance-optimizer.js"></script>
+    <script>
+        // Asset preloader and loading manager
+        class LoadingManager {
+            constructor() {
+                this.totalAssets = 0;
+                this.loadedAssets = 0;
+                this.loadingBar = document.getElementById('loading-bar');
+                this.loadingText = document.getElementById('loading-text');
+                this.loadingScreen = document.getElementById('loading-screen');
+                this.assetsToLoad = [];
+                this.scriptsToLoad = [];
+                this.criticalAssetsLoaded = false;
+            }
+            
+            addAsset(src, type = 'image') {
+                this.assetsToLoad.push({ src, type });
+                this.totalAssets++;
+            }
+            
+            addScript(src) {
+                this.scriptsToLoad.push(src);
+                this.totalAssets++;
+            }
+            
+            updateProgress() {
+                const progress = (this.loadedAssets / this.totalAssets) * 100;
+                this.loadingBar.style.width = `${progress}%`;
+                
+                if (progress >= 100) {
+                    this.loadingText.textContent = 'Ready to play!';
+                    setTimeout(() => this.hideLoadingScreen(), 500);
+                } else if (progress >= 80) {
+                    this.loadingText.textContent = 'Almost ready...';
+                } else if (progress >= 50) {
+                    this.loadingText.textContent = 'Loading game assets...';
+                } else {
+                    this.loadingText.textContent = 'Loading assets...';
+                }
+            }
+            
+            loadAsset(assetData) {
+                return new Promise((resolve) => {
+                    if (assetData.type === 'image') {
+                        const img = new Image();
+                        img.onload = () => {
+                            this.loadedAssets++;
+                            this.updateProgress();
+                            resolve(img);
+                        };
+                        img.onerror = () => {
+                            console.warn(`Failed to load image: ${assetData.src}`);
+                            this.loadedAssets++;
+                            this.updateProgress();
+                            resolve(null);
+                        };
+                        img.src = assetData.src;
+                    }
+                });
+            }
+            
+            loadScript(src) {
+                return new Promise((resolve) => {
+                    const script = document.createElement('script');
+                    script.onload = () => {
+                        this.loadedAssets++;
+                        this.updateProgress();
+                        resolve();
+                    };
+                    script.onerror = () => {
+                        console.warn(`Failed to load script: ${src}`);
+                        this.loadedAssets++;
+                        this.updateProgress();
+                        resolve();
+                    };
+                    script.src = src;
+                    document.head.appendChild(script);
+                });
+            }
+            
+            async loadAll() {
+                // Load critical assets first
+                const criticalAssets = [
+                    { src: 'assets/images/taz.png', type: 'image' },
+                    { src: 'assets/images/chloe.png', type: 'image' },
+                    { src: 'assets/images/background.png', type: 'image' },
+                    { src: 'assets/images/ground.png', type: 'image' }
+                ];
+                
+                this.totalAssets = criticalAssets.length + this.scriptsToLoad.length + this.assetsToLoad.length;
+                
+                // Load critical assets first
+                const criticalPromises = criticalAssets.map(asset => this.loadAsset(asset));
+                await Promise.all(criticalPromises);
+                
+                // Load scripts
+                const scriptPromises = this.scriptsToLoad.map(src => this.loadScript(src));
+                
+                // Load remaining assets
+                const assetPromises = this.assetsToLoad.map(asset => this.loadAsset(asset));
+                
+                // Load scripts and remaining assets in parallel
+                await Promise.all([...scriptPromises, ...assetPromises]);
+            }
+            
+            hideLoadingScreen() {
+                this.loadingScreen.classList.add('hidden');
+                setTimeout(() => {
+                    this.loadingScreen.style.display = 'none';
+                }, 500);
+                
+                // Dispatch event that loading is complete
+                window.dispatchEvent(new CustomEvent('gameAssetsLoaded'));
+            }
+        }
+        
+        // Initialize loading manager
+        const loadingManager = new LoadingManager();
+        
+        // Register service worker for caching and offline support
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('🔧 Service Worker registered for faster loading');
+                        
+                        // Listen for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New version available
+                                    console.log('🔄 New game version available');
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.warn('Service Worker registration failed:', error);
+                    });
+            });
+        }
+        
+        // Add critical scripts to load
+        loadingManager.addScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
+        loadingManager.addScript('js/netlify-env.js');
+        loadingManager.addScript('js/env-loader.js');
+        loadingManager.addScript('js/config.js');
+        loadingManager.addScript('js/supabase.js');
+        loadingManager.addScript('js/drawing-functions.js');
+        loadingManager.addScript('js/game.js');
+        
+        // Add additional game assets
+        loadingManager.addAsset('assets/images/pipe-top.png');
+        loadingManager.addAsset('assets/images/pipe-bottom.png');
+        
+        // Start loading when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => loadingManager.loadAll());
+        } else {
+            loadingManager.loadAll();
+        }
+    </script>
     
-    <!-- 8-bit sound system -->
-    <script src="js/sounds.js"></script>
-    <script src="js/8bit-music.js"></script>
-    <script src="js/drawing-functions.js"></script>
-    <script src="js/game.js"></script>
-    <script src="js/dark-mode.js"></script>
-    <script src="js/leaderboard.js"></script>
-    <script src="js/background-effects.js"></script>
-    
-    <!-- Mobile optimization script -->
-    <script src="js/mobile-optimization.js"></script>
+    <!-- Non-critical scripts loaded after main game assets -->
+    <script defer src="js/sounds.js"></script>
+    <script defer src="js/8bit-music.js"></script>
+    <script defer src="js/dark-mode.js"></script>
+    <script defer src="js/leaderboard.js"></script>
+    <script defer src="js/background-effects.js"></script>
+    <script defer src="js/mobile-optimization.js"></script>
     
     <!-- Pixel effect overlay (subtle scanlines) -->
     <div class="crt-overlay"></div>
