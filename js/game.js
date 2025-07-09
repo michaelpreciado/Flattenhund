@@ -126,12 +126,11 @@ function init() {
     // Ground position
     ground.y = canvas.height - GROUND_HEIGHT;
     
-    // Load high score from local storage
-    const savedHighScore = localStorage.getItem('flattenhundHighScore');
-    if (savedHighScore) {
-        highScore = parseInt(savedHighScore);
-        highScoreDisplay.textContent = highScore;
-    }
+    // Load high score from new persistent player data system
+    // This will be updated by the leaderboard system when it loads
+    // For now, just set to 0 and let leaderboard.js handle it
+    highScore = 0;
+    highScoreDisplay.textContent = highScore;
     
     // Load assets
     loadAssets();
@@ -765,10 +764,14 @@ async function gameEnd() {
         }, 500);
     }
     
-    // Update high score if needed
-    if (score > highScore) {
+    // Update high score using new persistent player data system
+    // The leaderboard system now handles all score tracking
+    // Just update the display with player's highest score
+    const playerData = window.leaderboardDebug ? window.leaderboardDebug.getPlayerData() : null;
+    if (playerData && playerData.highestScore > highScore) {
+        highScore = playerData.highestScore;
+    } else if (score > highScore) {
         highScore = score;
-        localStorage.setItem('flattenhundHighScore', highScore);
     }
     
     // Update game session in Supabase if available

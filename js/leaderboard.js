@@ -1,5 +1,86 @@
 // Leaderboard system for Flappy 8-Bit
-// Handles high score tracking and display
+// Handles high score tracking and display with persistent player nicknames
+
+// Player data management for persistent nicknames and highest scores
+const PLAYER_DATA_KEY = 'flattenhundPlayerData';
+
+// Get stored player data from localStorage
+function getPlayerData() {
+    try {
+        const data = localStorage.getItem(PLAYER_DATA_KEY);
+        if (data) {
+            const parsed = JSON.parse(data);
+            console.log('📱 Retrieved player data:', parsed);
+            return parsed;
+        }
+    } catch (error) {
+        console.warn('⚠️ Error retrieving player data:', error);
+    }
+    
+    // Return default structure if no data or error
+    return {
+        nickname: null,
+        highestScore: 0,
+        totalGames: 0,
+        lastPlayed: null
+    };
+}
+
+// Save player data to localStorage
+function savePlayerData(playerData) {
+    try {
+        localStorage.setItem(PLAYER_DATA_KEY, JSON.stringify(playerData));
+        console.log('💾 Player data saved:', playerData);
+        return true;
+    } catch (error) {
+        console.error('❌ Error saving player data:', error);
+        return false;
+    }
+}
+
+// Update player's highest score and game stats
+function updatePlayerScore(currentScore) {
+    const playerData = getPlayerData();
+    const wasNewHighScore = currentScore > playerData.highestScore;
+    
+    // Update stats
+    if (wasNewHighScore) {
+        playerData.highestScore = currentScore;
+    }
+    playerData.totalGames += 1;
+    playerData.lastPlayed = new Date().toISOString();
+    
+    // Save updated data
+    savePlayerData(playerData);
+    
+    console.log(`🎮 Game stats updated: Score: ${currentScore}, High Score: ${playerData.highestScore}, Total Games: ${playerData.totalGames}`);
+    
+    return {
+        isNewHighScore: wasNewHighScore,
+        playerData: playerData
+    };
+}
+
+// Check if player has a stored nickname
+function hasStoredNickname() {
+    const playerData = getPlayerData();
+    return playerData.nickname && playerData.nickname.length > 0;
+}
+
+// Set player nickname (first time setup)
+function setPlayerNickname(nickname) {
+    const playerData = getPlayerData();
+    playerData.nickname = nickname.trim().toUpperCase();
+    savePlayerData(playerData);
+    console.log('👤 Player nickname set:', playerData.nickname);
+    return playerData.nickname;
+}
+
+// Get player's stored nickname
+function getPlayerNickname() {
+    const playerData = getPlayerData();
+    return playerData.nickname || 'PLAYER';
+}
 
 // Dummy leaderboard data has been removed to prioritize Supabase.
 
@@ -100,6 +181,11 @@ async function initLeaderboard() {
             this.select(); // Select all text when focused
         });
     }
+    
+    // Update game's high score display with player's stored highest score
+    updateGameHighScoreDisplay();
+    
+    console.log('✅ Leaderboard initialized successfully');
 }
 
 // Load leaderboard exclusively from Supabase (online-only mode)
@@ -258,7 +344,7 @@ function actuallyRenderLeaderboard() {
 // Check if current score qualifies for leaderboard (online-only mode)
 function checkAndPromptForPersonalBest(currentScore) {
     try {
-        console.log('🎯 === HIGH SCORE CHECK START (Online-Only Mode) ===');
+        console.log('🎯 === HIGH SCORE CHECK START (Persistent Nickname Mode) ===');
         console.log('🎯 Checking high score qualification for score:', currentScore);
         console.log('📊 Current leaderboard data:', leaderboard);
         console.log('📊 Leaderboard length:', leaderboard ? leaderboard.length : 'null/undefined');
@@ -282,56 +368,78 @@ function checkAndPromptForPersonalBest(currentScore) {
             return false;
         }
         
-        const personalHighScore = parseInt(localStorage.getItem('flattenhundHighScore')) || 0;
-        console.log('📈 Personal high score from localStorage:', personalHighScore);
+        // Update player stats and check for new high score
+        const scoreUpdate = updatePlayerScore(currentScore);
+        const playerData = scoreUpdate.playerData;
+        const isNewPersonalBest = scoreUpdate.isNewHighScore;
         
-        // Check if it's a new personal best
-        const isPersonalBest = currentScore > personalHighScore;
-        console.log('🏆 Is personal best?', isPersonalBest, `(${currentScore} > ${personalHighScore})`);
+        console.log('📈 Player data:', playerData);
+        console.log('🏆 Is new personal best?', isNewPersonalBest, `(${currentScore} vs ${playerData.highestScore})`);
         
-        // Check if it qualifies for the leaderboard (top 10)
+        // Check if highest score qualifies for the leaderboard (top 10)
         let qualifiesForLeaderboard = false;
+        const scoreToCheck = playerData.highestScore; // Always check their highest score
         
         // Ensure leaderboard is valid before checking
         if (leaderboard && Array.isArray(leaderboard)) {
             console.log('📋 Leaderboard is valid array with', leaderboard.length, 'entries');
             if (leaderboard.length < 10) {
-                qualifiesForLeaderboard = currentScore > 0;
+                qualifiesForLeaderboard = scoreToCheck > 0;
                 console.log('📋 Leaderboard has < 10 entries, any score > 0 qualifies. Result:', qualifiesForLeaderboard);
             } else {
-                // Check if score is higher than the lowest score in top 10
+                // Check if highest score is higher than the lowest score in top 10
                 const lowestEntry = leaderboard[leaderboard.length - 1];
                 console.log('📋 Lowest leaderboard entry:', lowestEntry);
                 if (lowestEntry && typeof lowestEntry.score === 'number') {
                     const lowestScore = lowestEntry.score;
-                    qualifiesForLeaderboard = currentScore > lowestScore;
-                    console.log('📋 Checking against lowest leaderboard score:', lowestScore, 'Qualifies?', qualifiesForLeaderboard, `(${currentScore} > ${lowestScore})`);
+                    qualifiesForLeaderboard = scoreToCheck > lowestScore;
+                    console.log('📋 Checking highest score against lowest leaderboard score:', lowestScore, 'Qualifies?', qualifiesForLeaderboard, `(${scoreToCheck} > ${lowestScore})`);
                 } else {
                     console.warn('⚠️ Invalid leaderboard entry structure, defaulting to qualification');
-                    qualifiesForLeaderboard = currentScore > 0;
+                    qualifiesForLeaderboard = scoreToCheck > 0;
                 }
             }
         } else {
             console.log('📋 No valid leaderboard data (null/undefined/not array), any score > 0 qualifies');
-            qualifiesForLeaderboard = currentScore > 0;
+            qualifiesForLeaderboard = scoreToCheck > 0;
         }
 
         console.log('🎖️ === QUALIFICATION RESULTS ===');
-        console.log('🎖️ Personal Best:', isPersonalBest);
+        console.log('🎖️ New Personal Best:', isNewPersonalBest);
         console.log('🎖️ Leaderboard Qualification:', qualifiesForLeaderboard);
-        console.log('🎖️ Overall Qualification:', isPersonalBest || qualifiesForLeaderboard);
+        console.log('🎖️ Has Stored Nickname:', hasStoredNickname());
+        console.log('🎖️ Overall Qualification:', (isNewPersonalBest || qualifiesForLeaderboard));
 
-        if (isPersonalBest || qualifiesForLeaderboard) {
-            let message = '';
-            if (isPersonalBest && qualifiesForLeaderboard) {
-                message = 'NEW PERSONAL BEST & TOP 10!';
-            } else if (isPersonalBest) {
-                message = 'NEW PERSONAL BEST!';
-            } else {
-                message = 'YOU MADE THE TOP 10!';
+        // Check if they already have a nickname stored
+        if (hasStoredNickname() && qualifiesForLeaderboard) {
+            // Auto-save for returning players with stored nickname
+            console.log('👤 Returning player with stored nickname - auto-saving highest score...');
+            const nickname = getPlayerNickname();
+            
+            // Show success message
+            if (window.showMobileHint) {
+                window.showMobileHint(`Score updated for ${nickname}! High Score: ${playerData.highestScore}`, 3000);
             }
             
-            console.log(`🎉 ${message} Score: ${currentScore}. Attempting to show form...`);
+            // Auto-save their highest score to leaderboard
+            setTimeout(async () => {
+                await autoSavePlayerScore(nickname, playerData.highestScore);
+            }, 500);
+            
+            console.log('🎯 === HIGH SCORE CHECK END (AUTO-SAVED) ===');
+            return false; // Don't show form for returning players
+        }
+        
+        // First-time players or players without stored nickname
+        if (!hasStoredNickname() && qualifiesForLeaderboard) {
+            let message = '';
+            if (isNewPersonalBest && qualifiesForLeaderboard) {
+                message = 'GREAT SCORE! ENTER YOUR NICKNAME:';
+            } else if (qualifiesForLeaderboard) {
+                message = 'YOU MADE THE LEADERBOARD! ENTER YOUR NICKNAME:';
+            }
+            
+            console.log(`🎉 First-time player! ${message} Score: ${playerData.highestScore}`);
             
             // Check if form elements exist before trying to use them
             console.log('🔍 Checking for form elements...');
@@ -357,7 +465,7 @@ function checkAndPromptForPersonalBest(currentScore) {
                 
                 // Mobile hint
                 if (window.showMobileHint) {
-                    window.showMobileHint('Enter your name for the leaderboard!', 3000);
+                    window.showMobileHint('Enter your nickname - it will be remembered for future games!', 4000);
                 }
             } else {
                 console.error('❌ High score form element not found! DOM element is null/undefined');
@@ -367,6 +475,7 @@ function checkAndPromptForPersonalBest(currentScore) {
             if (playerNameInput) {
                 console.log('✅ Player name input found, clearing and focusing...');
                 playerNameInput.value = ''; // Clear any previous input
+                playerNameInput.placeholder = 'YOUR NICKNAME';
                 // Use setTimeout to prevent blocking
                 setTimeout(() => {
                     if (playerNameInput) {
@@ -378,17 +487,17 @@ function checkAndPromptForPersonalBest(currentScore) {
                 console.error('❌ Player name input element not found!');
             }
             
-            console.log('🎯 === HIGH SCORE CHECK END (SUCCESS) ===');
-            return true; // Indicates should show form
+            console.log('🎯 === HIGH SCORE CHECK END (SHOW FORM) ===');
+            return true; // Show form for first-time players
         } else {
-            console.log(`ℹ️ No high score achievement: ${currentScore}. Personal best: ${personalHighScore}, Leaderboard qualification: ${qualifiesForLeaderboard}. Hiding form.`);
+            console.log(`ℹ️ No action needed: Highest Score: ${playerData.highestScore}, Qualifies: ${qualifiesForLeaderboard}, Has Nickname: ${hasStoredNickname()}`);
             if (newHighScoreForm) {
                 newHighScoreForm.classList.add('hidden');
             }
         }
         
-        console.log('🎯 === HIGH SCORE CHECK END (NO QUALIFICATION) ===');
-        return false; // Not a high score
+        console.log('🎯 === HIGH SCORE CHECK END (NO ACTION) ===');
+        return false; // No form needed
     } catch (error) {
         console.error('❌ Error in checkAndPromptForPersonalBest:', error);
         console.error('❌ Stack trace:', error.stack);
@@ -401,19 +510,68 @@ function checkAndPromptForPersonalBest(currentScore) {
     }
 }
 
-// Save high score exclusively to Supabase (online-only mode)
+// Auto-save player score for returning players (no form needed)
+async function autoSavePlayerScore(nickname, highestScore) {
+    const character = window.selectedCharacter || 'taz';
+    
+    console.log(`🤖 Auto-saving score for returning player: ${nickname} - ${highestScore} (${character})`);
+    
+    try {
+        // Check if Supabase is available
+        if (!window.supabaseHelpers || !window.supabaseHelpers.isSupabaseAvailable()) {
+            console.warn('⚠️ Supabase not available for auto-save');
+            return false;
+        }
+        
+        const saveResult = await window.supabaseHelpers.saveScore(nickname, highestScore, character);
+        
+        if (saveResult) {
+            console.log("✅ Auto-save successful for returning player");
+            
+            // Mobile haptic feedback for success
+            if (window.triggerHaptic) {
+                window.triggerHaptic('success');
+            }
+            
+            // Refresh leaderboard
+            setTimeout(async () => {
+                try {
+                    await loadLeaderboard();
+                    renderLeaderboard();
+                    console.log("✅ Leaderboard refreshed after auto-save");
+                } catch (err) {
+                    console.error("❌ Error refreshing leaderboard after auto-save:", err);
+                }
+            }, 1000);
+            
+            return true;
+        } else {
+            console.warn('⚠️ Auto-save failed');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Error in auto-save:', error);
+        return false;
+    }
+}
+
+// Save high score for first-time players (with nickname form)
 async function saveHighScore() {
     const playerName = playerNameInput.value.trim().toUpperCase() || 'PLAYER';
-    const currentScore = window.score; // Global score variable from game.js
-    const character = window.selectedCharacter || 'taz'; // Get selected character from game.js
+    const playerData = getPlayerData(); // Get current player data
+    const highestScore = playerData.highestScore; // Use highest score, not current score
+    const character = window.selectedCharacter || 'taz';
 
-    if (typeof currentScore === 'undefined') {
-        console.error("Score is undefined in saveHighScore. Aborting save.");
+    if (!highestScore || highestScore <= 0) {
+        console.error("No valid highest score to save. Aborting save.");
         if (newHighScoreForm) newHighScoreForm.classList.add('hidden');
         return;
     }
 
-    console.log(`🎯 Attempting to save high score (online-only): ${playerName} - ${currentScore} (${character})`);
+    console.log(`🎯 Saving first-time player score: ${playerName} - ${highestScore} (${character})`);
+
+    // Store the nickname for future use
+    setPlayerNickname(playerName);
 
     // Show saving state
     const originalButtonText = saveScoreButton.textContent;
@@ -436,8 +594,8 @@ async function saveHighScore() {
             throw new Error('Supabase not configured - online connection required');
         }
 
-        console.log(`Attempting to save to Supabase: ${playerName}, ${currentScore}, ${character}`);
-        const saveResult = await window.supabaseHelpers.saveScore(playerName, currentScore, character);
+        console.log(`Attempting to save to Supabase: ${playerName}, ${highestScore}, ${character}`);
+        const saveResult = await window.supabaseHelpers.saveScore(playerName, highestScore, character);
         
         if (saveResult) {
             console.log("✅ Score saved to Supabase successfully.");
@@ -452,7 +610,7 @@ async function saveHighScore() {
             
             // Mobile hint for success
             if (window.showMobileHint) {
-                window.showMobileHint('Score saved to leaderboard!', 2000);
+                window.showMobileHint(`Welcome ${playerName}! Your nickname is saved for future games.`, 3000);
             }
             
             setTimeout(() => {
@@ -594,6 +752,19 @@ async function testSupabaseConnection() {
     }
 }
 
+// Update game's high score display with player's actual highest score
+function updateGameHighScoreDisplay() {
+    const playerData = getPlayerData();
+    if (playerData.highestScore > 0 && window.highScore !== undefined) {
+        window.highScore = playerData.highestScore;
+        const highScoreDisplay = document.getElementById('high-score');
+        if (highScoreDisplay) {
+            highScoreDisplay.textContent = playerData.highestScore;
+            console.log(`🎮 Updated game high score display: ${playerData.highestScore}`);
+        }
+    }
+}
+
 // Expose functions globally for debugging AND for game integration
 window.leaderboardDebug = {
     refreshLeaderboard,
@@ -601,6 +772,16 @@ window.leaderboardDebug = {
     getCurrentLeaderboard: () => leaderboard,
     renderLeaderboard,
     loadLeaderboard,
+    updateGameHighScoreDisplay,
+    // Player data management
+    getPlayerData,
+    getPlayerNickname,
+    hasStoredNickname,
+    clearPlayerData: () => {
+        localStorage.removeItem(PLAYER_DATA_KEY);
+        console.log('🧹 Player data cleared - next game will prompt for nickname');
+        return true;
+    },
     // Add test functions for debugging
     testHighScoreFlow: (testScore) => {
         console.log('🧪 Testing high score flow with score:', testScore);
