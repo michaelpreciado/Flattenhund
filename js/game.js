@@ -145,8 +145,19 @@ function init() {
     const chooseChloeBtn = document.getElementById('choose-chloe');
     const startBtn = document.getElementById('start-button');
     
+    // Debug: Log if elements are found
+    console.log('🎮 Character selection setup:', {
+        chooseTazBtn: !!chooseTazBtn,
+        chooseChloeBtn: !!chooseChloeBtn, 
+        startBtn: !!startBtn
+    });
+    
     // Helper function to add both click and touch events for mobile compatibility
     function addButtonListener(element, handler) {
+        if (!element) {
+            console.error('❌ Cannot add listener to null element');
+            return;
+        }
         element.addEventListener('click', handler);
         element.addEventListener('touchend', (e) => {
             e.preventDefault();
@@ -155,21 +166,36 @@ function init() {
     }
     
     addButtonListener(chooseTazBtn, () => {
+        console.log('🐾 Taz selected');
         selectedCharacter = 'taz';
         chooseTazBtn.classList.add('selected');
         chooseChloeBtn.classList.remove('selected');
-        startBtn.disabled = false;
     });
     
     addButtonListener(chooseChloeBtn, () => {
+        console.log('🐕 Chloe selected');
         selectedCharacter = 'chloe';
         chooseChloeBtn.classList.add('selected');
         chooseTazBtn.classList.remove('selected');
-        startBtn.disabled = false;
     });
 
+    // Auto-select Taz by default
+    if (!selectedCharacter && chooseTazBtn) {
+        console.log('🔧 Auto-selecting Taz as default character');
+        selectedCharacter = 'taz';
+        chooseTazBtn.classList.add('selected');
+    }
+
     // Event listeners - add both click and touch support for mobile
-    addButtonListener(document.getElementById('start-button'), startGame);
+    addButtonListener(document.getElementById('start-button'), () => {
+        console.log('🚀 Start button clicked, selectedCharacter:', selectedCharacter);
+        // Auto-select Taz if no character selected
+        if (!selectedCharacter) {
+            console.log('🔧 Auto-selecting Taz since no character was chosen');
+            selectedCharacter = 'taz';
+        }
+        startGame();
+    });
     addButtonListener(document.getElementById('restart-button'), resetGame);
     
     // Input handlers
@@ -388,14 +414,21 @@ function processSprite(img) {
 
 // Start the game
 async function startGame() {
+    console.log('🎯 startGame() called, selectedCharacter:', selectedCharacter);
+    
     // Default to Taz if none selected (should not happen)
     if (!selectedCharacter) selectedCharacter = 'taz';
+    
+    console.log('🎮 Starting game with character:', selectedCharacter);
+    
     gameStarted = true;
     gameOver = false;
     startScreen.style.display = 'none';
     gameOverScreen.style.display = 'none';
     score = 0;
     updateScore();
+    
+    console.log('🔄 Game state updated, starting game loop...');
     
     // Game start setup
     
@@ -432,6 +465,8 @@ async function startGame() {
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
     }
+    
+    console.log('✅ Game started successfully!');
     gameLoop();
 }
 
