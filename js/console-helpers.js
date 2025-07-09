@@ -319,6 +319,104 @@ window.resetSupabaseSetup = function() {
   console.log('🔄 Supabase setup reset. Reload the page to start fresh.');
 };
 
+// Remove duplicates from leaderboard (keeps highest score per player)
+window.cleanupDuplicates = async function() {
+  console.log('🧹 CLEANING UP DUPLICATE LEADERBOARD ENTRIES');
+  console.log('============================================');
+  
+  try {
+    if (!window.supabaseHelpers || !window.supabaseHelpers.isSupabaseAvailable()) {
+      console.error('❌ Supabase not available - cannot clean duplicates');
+      return false;
+    }
+    
+    console.log('1. Fetching all leaderboard entries...');
+    const { data: allEntries, error: fetchError } = await supabaseClient
+      .from('leaderboard')
+      .select('*')
+      .order('score', { ascending: false });
+    
+    if (fetchError) throw fetchError;
+    
+    if (!allEntries || allEntries.length === 0) {
+      console.log('✅ No entries found - nothing to clean');
+      return true;
+    }
+    
+    console.log(`📊 Found ${allEntries.length} total entries`);
+    
+    // Group by player name and find duplicates
+    const playerGroups = {};
+    allEntries.forEach(entry => {
+      if (!playerGroups[entry.name]) {
+        playerGroups[entry.name] = [];
+      }
+      playerGroups[entry.name].push(entry);
+    });
+    
+    console.log('2. Analyzing for duplicates...');
+    let duplicatesFound = 0;
+    let entriesToDelete = [];
+    
+    Object.keys(playerGroups).forEach(playerName => {
+      const entries = playerGroups[playerName];
+      if (entries.length > 1) {
+        console.log(`🔍 Found ${entries.length} entries for ${playerName}:`);
+        entries.forEach(entry => {
+          console.log(`   - ID: ${entry.id}, Score: ${entry.score}, Date: ${entry.created_at}`);
+        });
+        
+        // Sort by score (descending) and keep only the highest
+        entries.sort((a, b) => b.score - a.score);
+        const bestEntry = entries[0];
+        const duplicateEntries = entries.slice(1);
+        
+        console.log(`   ✅ Keeping: ID ${bestEntry.id} with score ${bestEntry.score}`);
+        console.log(`   🗑️ Removing: ${duplicateEntries.length} duplicate(s)`);
+        
+        duplicatesFound += duplicateEntries.length;
+        entriesToDelete.push(...duplicateEntries.map(e => e.id));
+      }
+    });
+    
+    if (duplicatesFound === 0) {
+      console.log('✅ No duplicates found - leaderboard is clean!');
+      return true;
+    }
+    
+    console.log(`3. Removing ${duplicatesFound} duplicate entries...`);
+    
+    // Delete duplicates in batches
+    for (let i = 0; i < entriesToDelete.length; i += 10) {
+      const batch = entriesToDelete.slice(i, i + 10);
+      const { error: deleteError } = await supabaseClient
+        .from('leaderboard')
+        .delete()
+        .in('id', batch);
+      
+      if (deleteError) throw deleteError;
+      console.log(`   🗑️ Deleted batch ${Math.floor(i/10) + 1}`);
+    }
+    
+    console.log('✅ CLEANUP COMPLETE!');
+    console.log(`📊 Removed ${duplicatesFound} duplicate entries`);
+    console.log('💡 Refresh your game to see the cleaned leaderboard');
+    
+    // Refresh the leaderboard automatically
+    if (window.leaderboardDebug && window.leaderboardDebug.refreshLeaderboard) {
+      console.log('🔄 Auto-refreshing leaderboard...');
+      await window.leaderboardDebug.refreshLeaderboard();
+      console.log('✅ Leaderboard refreshed!');
+    }
+    
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Error cleaning duplicates:', error);
+    return false;
+  }
+};
+
 // Show helpful commands on load
 console.log(`
 🎮 Flattenhund Console Helpers Loaded!
@@ -330,6 +428,7 @@ Available commands:
 - resetSupabaseSetup()     → Clear all manual settings
 - diagnoseConnection()     → Comprehensive diagnostic of Supabase connection
 - fixConnection()          → Attempt to fix connection issues
+- cleanupDuplicates()      → Remove duplicate entries from leaderboard
 
 💡 Your game is currently in ${window.supabaseHelpers?.isSupabaseAvailable() ? 'ONLINE' : 'OFFLINE'} mode
 `); 

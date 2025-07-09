@@ -158,7 +158,7 @@ async function getLeaderboard(limit = 10) {
   }
 }
 
-// Save a score to the leaderboard
+// Save a score to the leaderboard with duplicate prevention
 async function saveScore(name, score, character) {
   try {
     const ready = await ensureInitialized();
@@ -167,17 +167,55 @@ async function saveScore(name, score, character) {
       return false;
     }
     
-    const { error } = await supabaseClient
+    const playerName = name.substring(0, 10);
+    
+    // First, check if player already exists
+    console.log(`🔍 Checking for existing player: ${playerName}`);
+    const { data: existingPlayer, error: fetchError } = await supabaseClient
       .from('leaderboard')
-      .insert([{ 
-        name: name.substring(0, 10), 
-        score: score,
-        character_used: character
-      }]);
+      .select('id, score')
+      .eq('name', playerName)
+      .single();
+    
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows found
+      throw fetchError;
+    }
+    
+    if (existingPlayer) {
+      // Player exists - only update if new score is higher
+      if (score > existingPlayer.score) {
+        console.log(`📈 Updating ${playerName}: ${existingPlayer.score} → ${score}`);
+        const { error: updateError } = await supabaseClient
+          .from('leaderboard')
+          .update({ 
+            score: score,
+            character_used: character,
+            created_at: new Date().toISOString()
+          })
+          .eq('id', existingPlayer.id);
+        
+        if (updateError) throw updateError;
+        console.log(`✅ Score updated: ${playerName} - ${score} points (improved by ${score - existingPlayer.score})`);
+        return true;
+      } else {
+        console.log(`⚡ ${playerName} already has a higher score (${existingPlayer.score} vs ${score}) - no update needed`);
+        return true; // Return true because it's not an error, just no update needed
+      }
+    } else {
+      // New player - insert new record
+      console.log(`🆕 Adding new player: ${playerName} - ${score}`);
+      const { error: insertError } = await supabaseClient
+        .from('leaderboard')
+        .insert([{ 
+          name: playerName, 
+          score: score,
+          character_used: character
+        }]);
       
-    if (error) throw error;
-    console.log(`💾 Score saved: ${name} - ${score} points`);
-    return true;
+      if (insertError) throw insertError;
+      console.log(`💾 New score saved: ${playerName} - ${score} points`);
+      return true;
+    }
   } catch (error) {
     handleSupabaseError(error, 'score save');
     return false;
