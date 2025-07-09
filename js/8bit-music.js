@@ -1,16 +1,23 @@
 // 8-bit Music and Sound Effects Engine
 // This provides more authentic 8-bit audio for the game
 
-// Audio context
-let audioCtx;
+// Re-use the shared AudioContext created in sounds.js to avoid duplicate
+// ‘audioCtx’ declarations crashing on Safari/iOS. If none exists yet we'll
+// create one lazily in initAudio() and attach it to `window` so subsequent
+// scripts can share it.
+let audioCtx = window.audioCtx || null;
 
 // Music control flags
 let musicEnabled = false; // Set to false to disable background music
 
 // Initialize audio
 function initAudio() {
-    // Create audio context
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Create audio context if it does not already exist
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Persist on the global object for other modules (e.g. sounds.js)
+        window.audioCtx = audioCtx;
+    }
     return audioCtx;
 }
 
