@@ -1025,3 +1025,29 @@ function handleMouseUp(e) {
 
 // Initialize the game when the page loads
 window.addEventListener('load', init);
+
+// ---------------------------------------------------------------------------
+// Expose game controls & reactive state on the global `window` object
+// This is required for helper scripts (like mobile-optimization.js) that
+// expect these functions/flags to exist.
+// ---------------------------------------------------------------------------
+window.startGame = startGame;
+window.resetGame = resetGame;
+window.flap = flap;
+
+// Keep the boolean flags in sync via accessors so reads/writes stay reactive.
+Object.defineProperty(window, 'gameStarted', {
+    get: () => gameStarted,
+    set: (val) => { gameStarted = !!val; }
+});
+
+Object.defineProperty(window, 'gameOver', {
+    get: () => gameOver,
+    set: (val) => { gameOver = !!val; }
+});
+
+Object.defineProperty(window, 'selectedCharacter', {
+    get: () => selectedCharacter,
+    set: (val) => { selectedCharacter = val; }
+});
+// ---------------------------------------------------------------------------
