@@ -1,7 +1,7 @@
-// Service Worker for Flattenhund
+// Service Worker for Flappy Dog
 // Provides aggressive caching for faster loading and offline gameplay
 
-const CACHE_NAME = 'flattenhund-v1.2';
+const CACHE_NAME = 'flappy-dog-v1.2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -144,7 +144,7 @@ self.addEventListener('fetch', (event) => {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                  <title>FLATTENHUND - Offline</title>
+                  <title>FLAPPY DOG - Offline</title>
                   <style>
                     body { 
                       font-family: monospace; 
@@ -158,7 +158,7 @@ self.addEventListener('fetch', (event) => {
                   </style>
                 </head>
                 <body>
-                  <h1>FLATTENHUND</h1>
+                                      <h1>FLAPPY DOG</h1>
                   <p>You're offline, but the game should still work!</p>
                   <p>Check your internet connection and refresh to sync your scores.</p>
                   <button onclick="location.reload()" style="

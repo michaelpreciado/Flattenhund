@@ -1,5 +1,5 @@
 {
-  "name": "flattenhund",
+  "name": "flappy-dog",
   "version": "1.0.0",
   "description": "A Flappy Bird-style game with retro pixel art",
   "scripts": {

@@ -62,8 +62,8 @@ img.character-img {
 }
 
 .character-btn {
-    background: var(--ui-bg-color);
-    border: 3px solid var(--ui-border-color);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.08));
+    border: 3px solid rgba(255, 255, 255, 0.3);
     color: var(--text-color);
     padding: 8px 12px;
     font-size: 1rem;
@@ -71,18 +71,35 @@ img.character-img {
     cursor: pointer;
     /* Remove rounded corners for 8-bit style */
     border-radius: 0;
-    /* Pixelated shadows instead of smooth ones */
-    box-shadow: 2px 0 0 0 var(--ui-shadow-color), 0 2px 0 0 var(--ui-shadow-color), 2px 2px 0 0 var(--ui-shadow-color);
+    /* Pixelated shadows with glass effect */
+    box-shadow: 
+        2px 0 0 0 var(--ui-shadow-color), 
+        0 2px 0 0 var(--ui-shadow-color), 
+        2px 2px 0 0 var(--ui-shadow-color),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.3);
     transition: transform 0.05s;
     outline: none;
     image-rendering: pixelated;
+    position: relative;
+    overflow: hidden;
+    /* Liquid glass effect */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 .character-btn.selected, .character-btn:focus {
-    background: #e7471d;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.25));
     color: #fff;
-    border-color: #fff;
+    border-color: rgba(255, 255, 255, 0.6);
     transform: scale(1.07);
+    box-shadow: 
+        2px 0 0 0 var(--ui-shadow-color), 
+        0 2px 0 0 var(--ui-shadow-color), 
+        2px 2px 0 0 var(--ui-shadow-color),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(255, 255, 255, 0.3);
 }
 
 button:disabled {
@@ -403,23 +420,228 @@ h1, h2 {
 
 /* Special styling for the FLATTERHUND title */
 .start-screen h1 {
-    font-size: 2.5rem;
+    font-size: 3.2rem;
     color: #FFFFFF;
-    text-shadow: 4px 4px 0 #000000;
-    letter-spacing: 2px;
+    text-shadow: 
+        /* Clean 3D shadow for depth */
+        2px 2px 0 #0066CC,
+        4px 4px 0 #004499,
+        6px 6px 0 #000000,
+        /* Subtle glow for visibility */
+        0 0 8px #1E90FF,
+        0 0 16px #1E90FF;
+    letter-spacing: 4px;
     text-transform: uppercase;
     /* Pixelated text effect */
     image-rendering: pixelated;
-    /* Add a subtle pixel border */
-    -webkit-text-stroke: 1px #000000;
-    /* Pixel-perfect positioning */
-    padding: 4px 0;
-    /* Add a blocky, 8-bit style border effect */
-    border: 4px solid #FFFFFF;
-    border-radius: 0; /* Sharp corners for 8-bit style */
-    background-color: rgba(0, 0, 0, 0.6);
-    padding: 10px 20px;
+    /* Clean border for definition */
+    -webkit-text-stroke: 1px #1E90FF;
+    /* Container styling */
+    padding: 20px 30px;
     margin-bottom: 30px;
+    /* Clean background */
+    background: 
+        linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(0,17,34,0.8) 50%, rgba(0,0,0,0.8) 100%);
+    /* Clean border */
+    border: 3px solid #1E90FF;
+    border-radius: 0;
+    /* Simplified glow */
+    box-shadow: 
+        /* Clean 3D shadow */
+        3px 3px 0 #0066CC,
+        6px 6px 0 #004499,
+        9px 9px 0 #000000,
+        /* Subtle outer glow */
+        0 0 20px rgba(30, 144, 255, 0.6),
+        0 0 40px rgba(30, 144, 255, 0.3);
+    /* Subtle animation */
+    animation: subtle-glow 3s ease-in-out infinite alternate;
+    position: relative;
+    overflow: hidden;
+    /* Light 3D effect */
+    transform: perspective(600px) rotateX(1deg);
+}
+
+/* Dodger Blue 3D flicker animation */
+@keyframes dodger-blue-flicker {
+    0% {
+        opacity: 1;
+        text-shadow: 
+            /* 3D layered shadows for depth */
+            1px 1px 0 #0066CC,
+            2px 2px 0 #004499,
+            3px 3px 0 #003366,
+            4px 4px 0 #002244,
+            5px 5px 0 #001122,
+            6px 6px 0 #000000,
+            /* Bright neon glow layers */
+            0 0 5px #1E90FF,
+            0 0 10px #1E90FF,
+            0 0 15px #1E90FF,
+            0 0 20px #1E90FF,
+            0 0 35px #1E90FF,
+            0 0 40px #1E90FF;
+    }
+    95% {
+        opacity: 1;
+        text-shadow: 
+            /* 3D layered shadows for depth */
+            1px 1px 0 #0066CC,
+            2px 2px 0 #004499,
+            3px 3px 0 #003366,
+            4px 4px 0 #002244,
+            5px 5px 0 #001122,
+            6px 6px 0 #000000,
+            /* Bright neon glow layers */
+            0 0 5px #1E90FF,
+            0 0 10px #1E90FF,
+            0 0 15px #1E90FF,
+            0 0 20px #1E90FF,
+            0 0 35px #1E90FF,
+            0 0 40px #1E90FF;
+    }
+    96% {
+        opacity: 0.8;
+        text-shadow: 
+            /* 3D layered shadows for depth */
+            1px 1px 0 #0066CC,
+            2px 2px 0 #004499,
+            3px 3px 0 #003366,
+            4px 4px 0 #002244,
+            5px 5px 0 #001122,
+            6px 6px 0 #000000,
+            /* Dimmed neon glow */
+            0 0 3px #1E90FF,
+            0 0 8px #1E90FF,
+            0 0 12px #1E90FF,
+            0 0 16px #1E90FF,
+            0 0 25px #1E90FF,
+            0 0 30px #1E90FF;
+    }
+    97% {
+        opacity: 1;
+        text-shadow: 
+            /* 3D layered shadows for depth */
+            1px 1px 0 #0066CC,
+            2px 2px 0 #004499,
+            3px 3px 0 #003366,
+            4px 4px 0 #002244,
+            5px 5px 0 #001122,
+            6px 6px 0 #000000,
+            /* Intensified neon glow */
+            0 0 8px #1E90FF,
+            0 0 15px #1E90FF,
+            0 0 20px #1E90FF,
+            0 0 25px #1E90FF,
+            0 0 45px #1E90FF,
+            0 0 50px #1E90FF;
+    }
+    100% {
+        opacity: 1;
+        text-shadow: 
+            /* 3D layered shadows for depth */
+            1px 1px 0 #0066CC,
+            2px 2px 0 #004499,
+            3px 3px 0 #003366,
+            4px 4px 0 #002244,
+            5px 5px 0 #001122,
+            6px 6px 0 #000000,
+            /* Bright neon glow layers */
+            0 0 5px #1E90FF,
+            0 0 10px #1E90FF,
+            0 0 15px #1E90FF,
+            0 0 20px #1E90FF,
+            0 0 35px #1E90FF,
+            0 0 40px #1E90FF;
+    }
+}
+
+/* Subtle glow animation for readability */
+@keyframes subtle-glow {
+    0% {
+        box-shadow: 
+            /* Clean 3D shadow */
+            3px 3px 0 #0066CC,
+            6px 6px 0 #004499,
+            9px 9px 0 #000000,
+            /* Subtle outer glow */
+            0 0 20px rgba(30, 144, 255, 0.6),
+            0 0 40px rgba(30, 144, 255, 0.3);
+    }
+    100% {
+        box-shadow: 
+            /* Clean 3D shadow */
+            3px 3px 0 #0066CC,
+            6px 6px 0 #004499,
+            9px 9px 0 #000000,
+            /* Gentle glow increase */
+            0 0 25px rgba(30, 144, 255, 0.8),
+            0 0 50px rgba(30, 144, 255, 0.4);
+    }
+}
+
+/* Subtle scan line effect for authenticity */
+.start-screen h1::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(30, 144, 255, 0.1) 2px,
+        rgba(30, 144, 255, 0.1) 3px,
+        transparent 3px,
+        transparent 5px
+    );
+    pointer-events: none;
+    z-index: 2;
+    animation: subtle-scan-lines 0.2s linear infinite;
+}
+
+/* Minimal static effect */
+.start-screen h1::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 30% 70%, rgba(30, 144, 255, 0.08) 0%, transparent 15%),
+        radial-gradient(circle at 70% 30%, rgba(0, 102, 204, 0.05) 0%, transparent 15%);
+    pointer-events: none;
+    z-index: 3;
+    animation: subtle-static 0.4s linear infinite;
+}
+
+/* Subtle scan line animation */
+@keyframes subtle-scan-lines {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(3px);
+    }
+}
+
+/* Subtle static animation */
+@keyframes subtle-static {
+    0% {
+        opacity: 0.3;
+        transform: translateX(0);
+    }
+    50% {
+        opacity: 0.4;
+        transform: translateX(0.5px);
+    }
+    100% {
+        opacity: 0.3;
+        transform: translateX(0);
+    }
 }
 
 h2 {
@@ -562,12 +784,21 @@ h2 {
 }
 
 #save-score-button {
-    background-color: #FFFF00;
-    color: #000000;
-    border: 2px solid #FFFFFF;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.12));
+    color: #FFFFFF;
+    border: 2px solid rgba(255, 255, 255, 0.4);
     padding: 3px 8px;
     margin-top: 5px;
     font-size: 0.6rem;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    box-shadow: 
+        2px 0 0 0 #000, 
+        0 2px 0 0 #000, 
+        2px 2px 0 0 #000,
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 @keyframes blink {
@@ -581,20 +812,27 @@ p {
     font-size: 1.2rem;
 }
 
-/* Button styles */
+/* Button styles with liquid glass effect */
 button, .character-btn {
     font-family: 'PressStart2P', 'Courier New', monospace;
-    background-color: #e7471d;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1));
     color: white;
-    border: 4px solid #fff;
+    border: 4px solid rgba(255, 255, 255, 0.3);
     padding: 12px 24px;
     margin: 10px;
     cursor: pointer;
     text-transform: uppercase;
     font-weight: bold;
-    text-shadow: 1px 1px 0 #000;
-    box-shadow: 2px 0 0 0 #000, 0 2px 0 0 #000, 2px 2px 0 0 #000;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    box-shadow: 
+        2px 0 0 0 #000, 
+        0 2px 0 0 #000, 
+        2px 2px 0 0 #000,
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.3);
     transition: all 0.1s ease;
+    position: relative;
+    overflow: hidden;
     /* Mobile touch target improvements */
     min-height: 44px; /* iOS recommended minimum touch target */
     min-width: 44px;
@@ -602,13 +840,40 @@ button, .character-btn {
     -webkit-touch-callout: none; /* Prevents callout menu on iOS */
     -webkit-user-select: none; /* Prevents text selection */
     user-select: none;
+    /* Liquid glass effect */
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+}
+
+/* Glass shine effect */
+button::before, .character-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -50%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.5s ease;
+    z-index: 1;
+}
+
+button:hover::before, .character-btn:hover::before {
+    left: 100%;
 }
 
 button:hover {
-    background-color: #ff5022;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.2));
     transform: translateY(2px);
     border-bottom: 2px solid #000;
     border-right: 2px solid #000;
+    box-shadow: 
+        1px 0 0 0 #000, 
+        0 1px 0 0 #000, 
+        1px 1px 0 0 #000,
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.4);
 }
 
 .score-display {
@@ -726,8 +991,10 @@ h2 {
     font-size: 1.4rem;
     padding: 16px 32px;
     min-height: 60px; /* Larger touch target for start button */
-    background-color: #28a745; /* Green color to indicate start action */
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.15)); /* Glass transparent to indicate start action */
     animation: pulse-start 2s infinite; /* Draw attention to start button */
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
 }
 
 #start-button:disabled {

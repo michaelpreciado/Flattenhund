@@ -11,7 +11,7 @@ const config = {
   
   // Game configuration
   game: {
-    title: 'FLATTENHUND',
+    title: 'FLAPPY DOG',
     version: '1.0.0'
   },
   
