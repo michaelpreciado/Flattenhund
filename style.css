@@ -44,7 +44,8 @@ body.dark-mode {
 }
 
 img.character-img {
-    image-rendering: pixelated;
+    image-rendering: auto;
+    image-rendering: smooth;
     width: 48px;
     height: 48px;
     border: 2px solid #000;

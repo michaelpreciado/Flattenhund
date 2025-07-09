@@ -185,6 +185,13 @@ function init() {
     window.updateGameTheme = function(darkModeEnabled) {
         isDarkMode = darkModeEnabled;
     };
+    
+    // Initialize leaderboard system
+    if (window.initializeLeaderboardSystem) {
+        window.initializeLeaderboardSystem().catch(error => {
+            console.warn('⚠️ Leaderboard initialization failed:', error);
+        });
+    }
 }
 
 // Function to handle canvas resizing
@@ -673,6 +680,10 @@ function render() {
     // Save the current context state
     ctx.save();
     
+    // Enable smooth anti-aliasing specifically for character rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
     // Move to character position
     ctx.translate(mario.x + mario.width / 2, mario.y + mario.height / 2);
     
@@ -680,12 +691,12 @@ function render() {
     const rotation = mario.smoothRotation;
     ctx.rotate(rotation);
     
-    // Draw character (centered) with 8-bit animation effect
+    // Draw character (centered) with smooth anti-aliasing
     // Apply a slight up/down bounce effect based on animationFrameCount
     const bounceOffset = mario.isFlapping ? Math.sin(mario.animationFrameCount * 2) * 2 : 0; // The '2' multiplier might need adjustment based on MARIO_ANIM_FPS
     ctx.drawImage(charSprite, -mario.width / 2, -mario.height / 2 + bounceOffset, mario.width, mario.height);
     
-    // Restore context
+    // Restore context (this will restore the previous imageSmoothingEnabled setting)
     ctx.restore();
     
     // Draw score with 8-bit style
@@ -790,6 +801,11 @@ async function gameEnd() {
     // Update DOM elements
     finalScoreDisplay.textContent = score;
     highScoreDisplay.textContent = highScore;
+    
+    // Check for high score and prompt for nickname if needed
+    if (window.checkAndPromptForPersonalBest) {
+        window.checkAndPromptForPersonalBest(score);
+    }
     
     // Show game over screen immediately but keep the slow reveal animation
     gameOverScreen.style.display = 'flex';
