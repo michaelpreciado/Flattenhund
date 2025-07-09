@@ -158,7 +158,7 @@ async function getLeaderboard(limit = 10) {
   }
 }
 
-// Save a score to the leaderboard with atomic upsert to prevent duplicates
+// Save a score to the leaderboard with duplicate prevention
 async function saveScore(name, score, character) {
   try {
     const ready = await ensureInitialized();
@@ -167,93 +167,23 @@ async function saveScore(name, score, character) {
       return false;
     }
     
-    const playerName = name.substring(0, 10).toUpperCase(); // Ensure consistent case
+    const playerName = name.substring(0, 10);
     
-    console.log(`💾 Saving score for ${playerName}: ${score} points`);
-    
-    // Try to use the database function for intelligent upsert first
-    try {
-      const { data, error } = await supabaseClient
-        .rpc('upsert_high_score', {
-          player_name: playerName,
-          new_score: score,
-          char_used: character
-        });
-      
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        const result = data[0];
-        if (result.was_updated) {
-          console.log(`✅ Score saved/updated: ${playerName} - ${result.score} points`);
-        } else {
-          console.log(`⚡ ${playerName} already has a higher score (${result.score}) - no update needed`);
-        }
-        return true;
-      }
-    } catch (functionError) {
-      console.log(`⚠️ Database function failed, falling back to upsert: ${functionError.message}`);
-    }
-    
-    // Fallback to built-in upsert with conflict resolution
-    const { data, error } = await supabaseClient
-      .from('leaderboard')
-      .upsert(
-        { 
-          name: playerName,
-          score: score,
-          character_used: character,
-          created_at: new Date().toISOString()
-        },
-        { 
-          onConflict: 'name',
-          ignoreDuplicates: false 
-        }
-      )
-      .select('score');
-    
-    if (error) {
-      // If upsert fails due to missing unique constraint, fall back to manual logic
-      if (error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
-        console.log(`🔍 Handling duplicate manually for ${playerName}`);
-        return await saveScoreManual(playerName, score, character);
-      }
-      throw error;
-    }
-    
-    const savedScore = data?.[0]?.score;
-    if (savedScore === score) {
-      console.log(`✅ Score saved: ${playerName} - ${score} points`);
-    } else if (savedScore > score) {
-      console.log(`⚡ ${playerName} already has a higher score (${savedScore}) - keeping existing`);
-    }
-    
-    return true;
-    
-  } catch (error) {
-    console.log(`⚠️ Upsert failed, falling back to manual method for ${name}`);
-    return await saveScoreManual(name.substring(0, 10).toUpperCase(), score, character);
-  }
-}
-
-// Fallback manual method for databases without proper upsert support
-async function saveScoreManual(playerName, score, character) {
-  try {
-    // First, try to get existing player with FOR UPDATE lock to prevent race conditions
-    const { data: existingPlayers, error: fetchError } = await supabaseClient
+    // First, check if player already exists
+    console.log(`🔍 Checking for existing player: ${playerName}`);
+    const { data: existingPlayer, error: fetchError } = await supabaseClient
       .from('leaderboard')
       .select('id, score')
       .eq('name', playerName)
-      .order('score', { ascending: false })
-      .limit(1);
+      .single();
     
-    if (fetchError) throw fetchError;
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows found
+      throw fetchError;
+    }
     
-    if (existingPlayers && existingPlayers.length > 0) {
-      const existingPlayer = existingPlayers[0];
-      
+    if (existingPlayer) {
+      // Player exists - only update if new score is higher
       if (score > existingPlayer.score) {
-        // Update existing record with higher score
         console.log(`📈 Updating ${playerName}: ${existingPlayer.score} → ${score}`);
         const { error: updateError } = await supabaseClient
           .from('leaderboard')
@@ -265,38 +195,14 @@ async function saveScoreManual(playerName, score, character) {
           .eq('id', existingPlayer.id);
         
         if (updateError) throw updateError;
-        
-        // Clean up any other duplicate entries for this player
-        const { error: cleanupError } = await supabaseClient
-          .from('leaderboard')
-          .delete()
-          .eq('name', playerName)
-          .neq('id', existingPlayer.id);
-          
-        if (cleanupError) {
-          console.warn('⚠️ Could not clean up duplicates:', cleanupError);
-        }
-        
-        console.log(`✅ Score updated and duplicates cleaned: ${playerName} - ${score} points`);
+        console.log(`✅ Score updated: ${playerName} - ${score} points (improved by ${score - existingPlayer.score})`);
         return true;
       } else {
-        console.log(`⚡ ${playerName} already has a higher score (${existingPlayer.score} vs ${score})`);
-        
-        // Still clean up duplicates even if not updating score
-        const { error: cleanupError } = await supabaseClient
-          .from('leaderboard')
-          .delete()
-          .eq('name', playerName)
-          .neq('id', existingPlayer.id);
-          
-        if (cleanupError) {
-          console.warn('⚠️ Could not clean up duplicates:', cleanupError);
-        }
-        
-        return true;
+        console.log(`⚡ ${playerName} already has a higher score (${existingPlayer.score} vs ${score}) - no update needed`);
+        return true; // Return true because it's not an error, just no update needed
       }
     } else {
-      // No existing player, insert new record
+      // New player - insert new record
       console.log(`🆕 Adding new player: ${playerName} - ${score}`);
       const { error: insertError } = await supabaseClient
         .from('leaderboard')
@@ -306,15 +212,7 @@ async function saveScoreManual(playerName, score, character) {
           character_used: character
         }]);
       
-      if (insertError) {
-        // Handle case where someone else inserted the same name simultaneously
-        if (insertError.message.includes('duplicate key') || insertError.message.includes('unique constraint')) {
-          console.log(`🔄 Duplicate detected during insert, retrying for ${playerName}`);
-          return await saveScoreManual(playerName, score, character);
-        }
-        throw insertError;
-      }
-      
+      if (insertError) throw insertError;
       console.log(`💾 New score saved: ${playerName} - ${score} points`);
       return true;
     }
