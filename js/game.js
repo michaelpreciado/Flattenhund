@@ -320,6 +320,12 @@ function loadAssets() {
     chloeSprite.src = 'assets/images/chloe.png';
     // Default (legacy) Mario sprite for fallback
     marioSprite.src = 'assets/images/mario.png';
+    
+    // Add event listeners to process sprites when they load
+    tazSprite.onload = () => processSprite(tazSprite);
+    chloeSprite.onload = () => processSprite(chloeSprite);
+    marioSprite.onload = () => processSprite(marioSprite);
+    
     // Environment
     pipeTopSprite.src = 'assets/images/pipe-top.png';
     pipeBottomSprite.src = 'assets/images/pipe-bottom.png';
@@ -327,6 +333,52 @@ function loadAssets() {
     groundSprite.src = 'assets/images/ground.png';
     // Sound functions are loaded from sounds.js
     // No need to preload as they're generated on demand
+}
+
+// Function to remove white background from sprites
+function processSprite(img) {
+    try {
+        // Create a temporary canvas to process the image
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        // Set canvas size to match image
+        tempCanvas.width = img.width;
+        tempCanvas.height = img.height;
+        
+        // Draw the original image
+        tempCtx.drawImage(img, 0, 0);
+        
+        // Get image data
+        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+        const data = imageData.data;
+        
+        // Process each pixel
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];     // Red
+            const g = data[i + 1]; // Green  
+            const b = data[i + 2]; // Blue
+            const a = data[i + 3]; // Alpha
+            
+            // Check if pixel is white or near-white (with some tolerance)
+            const threshold = 240; // Adjust this value if needed (240-255 range for near-white)
+            if (r > threshold && g > threshold && b > threshold) {
+                data[i + 3] = 0; // Make it completely transparent
+            }
+        }
+        
+        // Put the processed image data back
+        tempCtx.putImageData(imageData, 0, 0);
+        
+        // Replace the original image source with the processed one
+        img.src = tempCanvas.toDataURL('image/png');
+        
+        console.log('✅ Processed sprite for transparency:', img.src.substring(0, 50) + '...');
+        
+    } catch (error) {
+        console.warn('⚠️ Could not process sprite for transparency:', error);
+        // Continue with original sprite if processing fails
+    }
 }
 
 // Start the game
