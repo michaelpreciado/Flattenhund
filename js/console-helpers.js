@@ -1,6 +1,165 @@
 // Console helper functions for Flattenhund debugging and testing
 // These functions are available in the browser console for easy testing
 
+// Comprehensive connection diagnostic
+window.diagnoseConnection = async function() {
+  console.log('🔍 FLATTENHUND CONNECTION DIAGNOSTIC');
+  console.log('=====================================');
+  
+  // Test 1: Check if Supabase library is loaded
+  console.log('\n1. Checking Supabase library...');
+  if (typeof supabase === 'undefined') {
+    console.error('❌ Supabase library not loaded!');
+    console.log('💡 Check if the Supabase CDN script is loading properly');
+    return;
+  }
+  console.log('✅ Supabase library loaded');
+  
+  // Test 2: Check if credentials are loaded
+  console.log('\n2. Checking credentials...');
+  const url = window.SUPABASE_DATABASE_URL || window.NETLIFY_ENV?.SUPABASE_DATABASE_URL;
+  const key = window.SUPABASE_ANON_KEY || window.NETLIFY_ENV?.SUPABASE_ANON_KEY;
+  
+  console.log('URL found:', url ? '✅ Yes' : '❌ No');
+  console.log('Key found:', key ? '✅ Yes' : '❌ No');
+  
+  if (!url || !key) {
+    console.error('❌ Missing credentials!');
+    console.log('💡 Check js/netlify-env.js for proper configuration');
+    return;
+  }
+  
+  console.log('🔗 URL:', url);
+  console.log('🔑 Key:', key.substring(0, 20) + '...');
+  
+  // Test 3: Try to create client
+  console.log('\n3. Creating Supabase client...');
+  let client;
+  try {
+    client = supabase.createClient(url, key);
+    console.log('✅ Client created successfully');
+  } catch (clientError) {
+    console.error('❌ Failed to create client:', clientError);
+    return;
+  }
+  
+  // Test 4: Test basic connection
+  console.log('\n4. Testing basic connection...');
+  try {
+    const { data, error } = await client.from('leaderboard').select('count');
+    if (error) {
+      console.error('❌ Database query failed:', error.message);
+      
+      if (error.message.includes('relation "leaderboard" does not exist')) {
+        console.log('💡 The "leaderboard" table needs to be created!');
+        console.log('📝 Run this SQL in your Supabase dashboard:');
+        console.log(`
+CREATE TABLE leaderboard (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(10) NOT NULL,
+  score INTEGER NOT NULL,
+  character_used VARCHAR(20) DEFAULT 'taz',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Enable public access (required for the game to work)
+ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
+
+-- Allow anyone to read the leaderboard
+CREATE POLICY "Anyone can read leaderboard" ON leaderboard FOR SELECT USING (true);
+
+-- Allow anyone to insert scores
+CREATE POLICY "Anyone can insert scores" ON leaderboard FOR INSERT WITH CHECK (true);
+        `);
+        return;
+      }
+      
+      if (error.message.includes('JWT')) {
+        console.log('💡 Authentication issue - check your anon key');
+        return;
+      }
+      
+      console.log('💡 Other database error - check your project status');
+      return;
+    } else {
+      console.log('✅ Database connection successful!');
+    }
+  } catch (connectionError) {
+    console.error('❌ Connection error:', connectionError);
+    console.log('💡 This might be a network issue or the project is paused');
+    return;
+  }
+  
+  // Test 5: Try to fetch leaderboard data
+  console.log('\n5. Testing leaderboard table...');
+  try {
+    const { data, error } = await client.from('leaderboard').select('*').limit(5);
+    if (error) {
+      console.error('❌ Leaderboard query failed:', error.message);
+      return;
+    } else {
+      console.log('✅ Leaderboard table accessible!');
+      console.log('📊 Current entries:', data.length);
+      if (data.length > 0) {
+        console.log('📊 Sample data:', data);
+      }
+    }
+  } catch (tableError) {
+    console.error('❌ Table access failed:', tableError);
+    return;
+  }
+  
+  // Test 6: Check if game helpers are working
+  console.log('\n6. Testing game integration...');
+  if (window.supabaseHelpers && window.supabaseHelpers.isSupabaseAvailable()) {
+    console.log('✅ Game integration working!');
+    
+    // Force re-initialization
+    console.log('\n7. Re-initializing game systems...');
+    try {
+      await window.supabaseHelpers.initSupabase();
+      if (window.leaderboardDebug && window.leaderboardDebug.refreshLeaderboard) {
+        await window.leaderboardDebug.refreshLeaderboard();
+        console.log('✅ Leaderboard refreshed!');
+      }
+      console.log('🎮 Game should now be ONLINE! Try playing a game.');
+    } catch (reinitError) {
+      console.error('❌ Re-initialization failed:', reinitError);
+    }
+  } else {
+    console.log('❌ Game integration not working');
+    console.log('💡 Try refreshing the page');
+  }
+  
+  console.log('\n=====================================');
+  console.log('🔧 Diagnostic complete!');
+};
+
+// Quick fix function
+window.fixConnection = async function() {
+  console.log('🔧 Attempting to fix connection...');
+  
+  try {
+    // Re-run initialization
+    if (window.supabaseHelpers) {
+      await window.supabaseHelpers.initSupabase();
+      console.log('✅ Supabase re-initialized');
+    }
+    
+    // Refresh leaderboard
+    if (window.leaderboardDebug) {
+      await window.leaderboardDebug.refreshLeaderboard();
+      console.log('✅ Leaderboard refreshed');
+    }
+    
+    console.log('🎮 Try playing a game now - it should work!');
+    
+  } catch (error) {
+    console.error('❌ Fix failed:', error);
+    console.log('💡 Run diagnoseConnection() for detailed analysis');
+  }
+};
+
 // Quick test function to set Supabase credentials and test connection
 window.quickTestSupabase = async function(url, key) {
   if (!url || !key) {
@@ -169,6 +328,8 @@ Available commands:
 - quickTestSupabase(url, key) → Test Supabase credentials  
 - detailedSupabaseTest(url, key) → Detailed connection test with error info
 - resetSupabaseSetup()     → Clear all manual settings
+- diagnoseConnection()     → Comprehensive diagnostic of Supabase connection
+- fixConnection()          → Attempt to fix connection issues
 
 💡 Your game is currently in ${window.supabaseHelpers?.isSupabaseAvailable() ? 'ONLINE' : 'OFFLINE'} mode
 `); 
