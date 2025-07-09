@@ -2,10 +2,8 @@
 // This provides more authentic 8-bit audio for the game
 
 // Re-use the shared AudioContext created in sounds.js to avoid duplicate
-// ‘audioCtx’ declarations crashing on Safari/iOS. If none exists yet we'll
-// create one lazily in initAudio() and attach it to `window` so subsequent
-// scripts can share it.
-let audioCtx = window.audioCtx || null;
+// ‘audioCtx’ declarations crashing on Safari/iOS. 
+// We will now directly use window.audioCtx which is initialized in sounds.js
 
 // Music control flags
 let musicEnabled = false; // Set to false to disable background music
@@ -13,32 +11,30 @@ let musicEnabled = false; // Set to false to disable background music
 // Initialize audio
 function initAudio() {
     // Create audio context if it does not already exist
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        // Persist on the global object for other modules (e.g. sounds.js)
-        window.audioCtx = audioCtx;
+    if (!window.audioCtx) {
+        window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    return audioCtx;
+    return window.audioCtx;
 }
 
 // Function to create 8-bit tones
 function playNote(frequency, duration, type = 'square', volume = 0.15) {
-    if (!audioCtx) initAudio();
+    if (!window.audioCtx) initAudio();
     
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+    const oscillator = window.audioCtx.createOscillator();
+    const gainNode = window.audioCtx.createGain();
     
     oscillator.type = type;
     oscillator.frequency.value = frequency;
     
     gainNode.gain.value = volume;
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, window.audioCtx.currentTime + duration);
     
     oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    gainNode.connect(window.audioCtx.destination);
     
     oscillator.start();
-    oscillator.stop(audioCtx.currentTime + duration);
+    oscillator.stop(window.audioCtx.currentTime + duration);
     
     return { oscillator, gainNode, stop: () => oscillator.stop() };
 }
@@ -46,12 +42,12 @@ function playNote(frequency, duration, type = 'square', volume = 0.15) {
 // 8-bit music theme (simplified version)
 function playTheme() {
     // Skip if music is disabled
-    if (!musicEnabled || !audioCtx) return;
+    if (!musicEnabled || !window.audioCtx) return;
     
     initAudio();
     
     const tempo = 0.3; // Slower tempo
-    let time = audioCtx.currentTime;
+    let time = window.audioCtx.currentTime;
     
     // Very minimal theme melody - just a few notes
     const melody = [
@@ -74,7 +70,7 @@ function playTheme() {
         if (item.note !== 'Rest') {
             setTimeout(() => {
                 playNote(notes[item.note], item.duration, 'square', 0.08);
-            }, (time - audioCtx.currentTime) * 1000);
+            }, (time - window.audioCtx.currentTime) * 1000);
         }
         time += item.duration;
     });
