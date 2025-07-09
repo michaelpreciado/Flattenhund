@@ -120,6 +120,8 @@ body {
     position: relative;
     width: 100vw;
     height: 100vh;
+    /* Use CSS custom property for better mobile viewport handling */
+    height: calc(var(--vh, 1vh) * 100);
     margin: 0;
     padding: 0;
     background-color: #87CEEB;
@@ -132,6 +134,11 @@ body {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+    /* iPhone safe area support */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
 
 #game-canvas {
@@ -383,7 +390,8 @@ button:hover {
 
 .score-display {
     position: absolute;
-    top: 20px;
+    /* Account for iPhone notch/dynamic island */
+    top: max(20px, calc(env(safe-area-inset-top) + 10px));
     left: 0;
     width: 100%;
     z-index: 5;
@@ -407,8 +415,10 @@ button:hover {
 /* Responsive design for smaller screens */
 @media (max-width: 400px) {
     .game-container {
-        width: 320px;
-        height: 568px;
+        width: 100vw;
+        height: 100vh;
+        /* Use CSS custom property for better mobile viewport handling */
+        height: calc(var(--vh, 1vh) * 100);
     }
     
     h1 {
@@ -431,8 +441,10 @@ button:hover {
 /* For very small screens */
 @media (max-width: 320px) {
     .game-container {
-        width: 300px;
-        height: 500px;
+        width: 100vw;
+        height: 100vh;
+        /* Use CSS custom property for better mobile viewport handling */
+        height: calc(var(--vh, 1vh) * 100);
     }
 }
 

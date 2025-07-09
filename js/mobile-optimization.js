@@ -26,7 +26,8 @@ class MobileOptimizer {
         this.setupTouchControls();
         this.optimizeCanvas();
         this.handleOrientation();
-        this.setupPerformanceMonitoring();
+        // Performance monitoring disabled for production - uncomment next line for debugging
+        // this.setupPerformanceMonitoring();
         this.preventScrolling();
         this.optimizeFonts();
         this.setupMobileHints();
