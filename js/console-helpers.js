@@ -417,6 +417,94 @@ window.cleanupDuplicates = async function() {
   }
 };
 
+// Show the SQL needed to update the database schema
+window.showDatabaseUpdateSQL = function() {
+  console.log(`
+🗄️ DATABASE UPDATE SQL FOR DUPLICATE PREVENTION
+=============================================
+
+Copy and paste this SQL into your Supabase SQL Editor:
+
+-- STEP 1: Clean up existing duplicates FIRST (keeps highest score per player)
+WITH ranked_scores AS (
+  SELECT id, 
+         name, 
+         score,
+         ROW_NUMBER() OVER (PARTITION BY name ORDER BY score DESC, created_at ASC) as rank
+  FROM leaderboard
+)
+DELETE FROM leaderboard 
+WHERE id IN (
+  SELECT id FROM ranked_scores WHERE rank > 1
+);
+
+-- STEP 2: Add unique constraint on name to prevent future duplicates
+ALTER TABLE leaderboard DROP CONSTRAINT IF EXISTS unique_player_name;
+ALTER TABLE leaderboard ADD CONSTRAINT unique_player_name UNIQUE (name);
+
+-- Allow public updates (needed for upsert functionality)
+CREATE POLICY "Allow public update to leaderboard" 
+ON leaderboard FOR UPDATE 
+USING (true) 
+WITH CHECK (true);
+
+-- Add index for better performance
+CREATE INDEX IF NOT EXISTS leaderboard_name_idx ON leaderboard(name);
+
+-- Function to handle intelligent upsert (only update if score is higher)
+CREATE OR REPLACE FUNCTION upsert_high_score(
+  player_name VARCHAR(10),
+  new_score INTEGER,
+  char_used VARCHAR(50)
+) RETURNS TABLE(id INTEGER, name VARCHAR(10), score INTEGER, was_updated BOOLEAN) AS $$
+DECLARE
+  existing_score INTEGER;
+  player_id INTEGER;
+  result_updated BOOLEAN := false;
+BEGIN
+  -- Try to get existing score
+  SELECT leaderboard.id, leaderboard.score INTO player_id, existing_score
+  FROM leaderboard 
+  WHERE leaderboard.name = player_name;
+  
+  IF player_id IS NOT NULL THEN
+    -- Player exists, only update if new score is higher
+    IF new_score > existing_score THEN
+      UPDATE leaderboard 
+      SET score = new_score, 
+          character_used = char_used,
+          created_at = NOW()
+      WHERE leaderboard.id = player_id;
+      result_updated := true;
+    END IF;
+    
+    -- Return the current record (updated or existing)
+    RETURN QUERY 
+    SELECT leaderboard.id, leaderboard.name, leaderboard.score, result_updated
+    FROM leaderboard 
+    WHERE leaderboard.id = player_id;
+  ELSE
+    -- Player doesn't exist, insert new record
+    INSERT INTO leaderboard (name, score, character_used)
+    VALUES (player_name, new_score, char_used)
+    RETURNING leaderboard.id, leaderboard.name, leaderboard.score, true;
+    
+    RETURN QUERY 
+    SELECT leaderboard.id, leaderboard.name, leaderboard.score, true AS was_updated
+    FROM leaderboard 
+    WHERE leaderboard.name = player_name;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+=============================================
+
+After running this SQL:
+1. The duplicates will be automatically cleaned up
+2. Test by playing a game - duplicates should be prevented!
+  `);
+};
+
 // Show helpful commands on load
 console.log(`
 🎮 Flattenhund Console Helpers Loaded!
@@ -429,6 +517,7 @@ Available commands:
 - diagnoseConnection()     → Comprehensive diagnostic of Supabase connection
 - fixConnection()          → Attempt to fix connection issues
 - cleanupDuplicates()      → Remove duplicate entries from leaderboard
+- showDatabaseUpdateSQL()  → Show SQL to update your database schema
 
 💡 Your game is currently in ${window.supabaseHelpers?.isSupabaseAvailable() ? 'ONLINE' : 'OFFLINE'} mode
 `); 
