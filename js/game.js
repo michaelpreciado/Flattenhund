@@ -2,76 +2,48 @@
 // This file handles the game initialization, loop, and core mechanics
 
 // Game constants: all speed/acceleration values are in units per second (pixels/sec or pixels/sec^2)
-// Enhanced physics system for better game flow and challenge
+// Target FPS for conversion baseline was 60 FPS.
 
-// Base Physics Constants
-const BASE_GRAVITY_ACCEL = 0.4 * 60 * 60; // 1440 px/sec^2 - Increased for more challenge
-const BASE_FLAP_VELOCITY = -6.0 * 60; // -360 px/sec - Reduced for lower jumps (was -7.5 * 60)
-const BASE_PIPE_SPEED_PPS = 3.5 * 60; // 210 px/sec - Faster base speed
-const TERMINAL_VELOCITY = 12 * 60; // 720 px/sec - Maximum fall speed
+const GRAVITY_ACCEL = 0.3 * 60 * 60; // (0.3 px/frame^2 * 60 frames/sec * 60) = 1080 px/sec^2 (was 0.275)
+const FLAP_VELOCITY_SET = -6.0 * 60; // (-6.0 px/frame * 60 frames/sec) = -360 px/sec (velocity is set on flap)
+const PIPE_SPEED_PPS = 3.1 * 60;     // (3.1 px/frame * 60 frames/sec) = 186 px/sec (was 2.7)
+const FORWARD_LEAP_VEL_CHANGE_PPS = 0.8 * 60; // (0.8 px/frame * 60 frames/sec) = 48 px/sec (added to velocityX)
+const MAX_FORWARD_SPEED_PPS = 2.5 * 60;   // (2.5 px/frame * 60 frames/sec) = 150 px/sec
+const FORWARD_DRAG_FACTOR = 0.95;    // Multiplier per frame (will be scaled by deltaTime: Math.pow(FORWARD_DRAG_FACTOR, 60 * deltaTime))
 
-// Progressive Difficulty Scaling
-const DIFFICULTY_SCALE_RATE = 0.08; // How much difficulty increases per score point
-const MAX_DIFFICULTY_MULTIPLIER = 2.5; // Maximum difficulty scaling (2.5x harder at high scores)
-const SPEED_INCREASE_RATE = 0.05; // Speed increase per score point
-const GAP_DECREASE_RATE = 0.8; // How much gap decreases per score point
+const FLOAT_DURATION_SECONDS = 15 / 60; // (15 frames / 60 fps) = 0.25 seconds
+const FLOAT_GRAVITY_MULTIPLIER = 0.7; // Gravity is multiplied by this during float
 
-// Advanced Physics
-const AIR_RESISTANCE_FACTOR = 0.985; // Air resistance for more realistic movement
-const MOMENTUM_PRESERVATION = 0.92; // How much momentum is preserved between flaps
-const VARIABLE_GRAVITY_FACTOR = 1.3; // Gravity increases when falling fast
-const PRECISION_FLAP_BONUS = 0.85; // Reduced gravity for precise timing
+const PARTICLE_MIN_SPEED_X_PPS = -3 * 60; // -180 px/sec
+const PARTICLE_MAX_SPEED_X_PPS = -1 * 60; // -60 px/sec
+const PARTICLE_MIN_SPEED_Y_PPS = -1 * 60; // -60 px/sec
+const PARTICLE_MAX_SPEED_Y_PPS = 1 * 60;  // 60 px/sec
+const PARTICLE_LIFE_DECAY_PER_SEC = 0.05 * 60; // 3.0 units of life per second (assuming life is 1.0 initially)
 
-// Enhanced Movement
-const FORWARD_LEAP_VEL_CHANGE_PPS = 1.2 * 60; // 72 px/sec - More forward momentum
-const MAX_FORWARD_SPEED_PPS = 3.2 * 60; // 192 px/sec - Higher max speed
-const FORWARD_DRAG_FACTOR = 0.94; // More drag for better control
+const MARIO_ANIM_FPS = 0.2 * 60; // (0.2 anim_frames/game_frame * 60 game_frames/sec) = 12 animation frames/sec
 
-// Improved Float System
-const FLOAT_DURATION_SECONDS = 18 / 60; // 0.3 seconds - Slightly longer float
-const FLOAT_GRAVITY_MULTIPLIER = 0.55; // Stronger float effect
-const PERFECT_TIMING_WINDOW = 0.15; // Window for perfect timing bonus
+// Game constants continue
+const PIPE_SPAWN_INTERVAL = 2000; // Time between pipes (milliseconds) - (was 2200)
+const PIPE_GAP = 170; // Reduced gap for harder gameplay (was 190)
+const GROUND_HEIGHT = 120; // Taller ground section like in Flappy Bird
+const MARIO_WIDTH = 48; // Increased character size
+const MARIO_HEIGHT = 48; // Increased character size
 
-// Enhanced Visual Effects
-const ROTATION_SENSITIVITY = 8; // More responsive rotation
-const ROTATION_SMOOTHING = 0.75; // Smoother rotation interpolation
-
-// Dynamic Pipe System
-const BASE_PIPE_SPAWN_INTERVAL = 1800; // Base time between pipes (milliseconds)
-const MIN_PIPE_SPAWN_INTERVAL = 1400; // Minimum spawn interval at high difficulty (increased)
-const BASE_PIPE_GAP = 160; // Base gap size - reasonable for all players
-const MIN_PIPE_GAP = 140; // Minimum gap at high difficulty - never smaller than this
-const GROUND_HEIGHT = 120;
-const MARIO_WIDTH = 48;
-const MARIO_HEIGHT = 48;
-
-// Particle system for enhanced effects
-const PARTICLE_MIN_SPEED_X_PPS = -4 * 60; // -240 px/sec
-const PARTICLE_MAX_SPEED_X_PPS = -1.5 * 60; // -90 px/sec
-const PARTICLE_MIN_SPEED_Y_PPS = -2 * 60; // -120 px/sec
-const PARTICLE_MAX_SPEED_Y_PPS = 2 * 60; // 120 px/sec
-const PARTICLE_LIFE_DECAY_PER_SEC = 0.06 * 60; // Faster particle decay
-
-const MARIO_ANIM_FPS = 0.25 * 60; // Slightly faster animation
-
-// Enhanced Game variables
+// Game variables
 let canvas, ctx;
 let mario = {
-    x: 60,
+    x: 80,
     y: 300,
     width: MARIO_WIDTH,
     height: MARIO_HEIGHT,
-    velocity: 0,
-    velocityX: 0,
+    velocity: 0,      // Vertical velocity
+    velocityX: 0,     // Horizontal velocity for smooth movement
     isFlapping: false,
-    frameCount: 0,
-    animationFrameCount: 0,
-    floatTimer: 0,
-    smoothRotation: 0,
-    holdTimer: 0,
-    lastFlapTime: 0, // For timing-based bonuses
-    perfectFlaps: 0, // Count of well-timed flaps
-    momentum: 0 // Accumulated momentum for advanced physics
+    frameCount: 0,    // For animation frames
+    animationFrameCount: 0, // Accumulator for animation frames
+    floatTimer: 0,    // Timer for floating effect (in seconds)
+    smoothRotation: 0, // Smoothly interpolated rotation value
+    holdTimer: 0     // Timer for tracking how long input is held
 };
 
 // Supabase session tracking
@@ -124,16 +96,6 @@ let startScreen, gameOverScreen, scoreDisplay, finalScoreDisplay, highScoreDispl
 // Dark mode support
 let isDarkMode = false;
 
-// Progressive Difficulty Tracking
-let difficultyMultiplier = 1.0;
-let currentPipeSpeed = BASE_PIPE_SPEED_PPS;
-let currentGravity = BASE_GRAVITY_ACCEL;
-let currentPipeGap = BASE_PIPE_GAP;
-let currentSpawnInterval = BASE_PIPE_SPAWN_INTERVAL;
-
-// Show bonus text for enhanced scoring
-let bonusTexts = []; // Array to store active bonus texts
-
 // Initialize the game
 function init() {
     // Get DOM elements
@@ -145,13 +107,10 @@ function init() {
     finalScoreDisplay = document.getElementById('final-score');
     highScoreDisplay = document.getElementById('high-score');
     
-    // Make ground globally accessible for drawing functions
-    window.ground = ground;
-    
     // Game initialization
     
     // Set initial canvas dimensions and add resize listener
-    resizeCanvas(); // This will set ground.y properly
+    resizeCanvas(); // Initial size
     window.addEventListener('resize', resizeCanvas);
 
     // For crisp pixel art rendering (will be set in resizeCanvas too)
@@ -164,8 +123,8 @@ function init() {
         window.eightBitAudio.enableMusic(false);
     }
     
-    // Ground position will be set in resizeCanvas()
-    // (Removed inconsistent initial ground.y calculation)
+    // Ground position
+    ground.y = canvas.height - GROUND_HEIGHT;
     
     // Load high score from local storage
     const savedHighScore = localStorage.getItem('flattenhundHighScore');
@@ -182,182 +141,32 @@ function init() {
     const chooseChloeBtn = document.getElementById('choose-chloe');
     const startBtn = document.getElementById('start-button');
     
-    console.log('🔧 Debug: Character selection elements found:', {
-        chooseTazBtn: !!chooseTazBtn,
-        chooseChloeBtn: !!chooseChloeBtn,
-        startBtn: !!startBtn
-    });
+    // Helper function to add both click and touch events for mobile compatibility
+    function addButtonListener(element, handler) {
+        element.addEventListener('click', handler);
+        element.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handler();
+        });
+    }
     
-    // Function to select Taz character
-    const selectTaz = () => {
-        console.log('🎮 Taz character selection triggered');
+    addButtonListener(chooseTazBtn, () => {
         selectedCharacter = 'taz';
         chooseTazBtn.classList.add('selected');
         chooseChloeBtn.classList.remove('selected');
         startBtn.disabled = false;
-        console.log('✅ Taz character selected, startBtn.disabled:', startBtn.disabled);
-    };
+    });
     
-    // Function to select Chloe character
-    const selectChloe = () => {
-        console.log('🎮 Chloe character selection triggered');
+    addButtonListener(chooseChloeBtn, () => {
         selectedCharacter = 'chloe';
         chooseChloeBtn.classList.add('selected');
         chooseTazBtn.classList.remove('selected');
         startBtn.disabled = false;
-        console.log('✅ Chloe character selected, startBtn.disabled:', startBtn.disabled);
-    };
-    
-    // Enhanced start button event handling with extensive debugging
-    const handleStartGame = (e) => {
-        console.log('🎮 Start game triggered:', {
-            selectedCharacter,
-            startBtnDisabled: startBtn.disabled,
-            eventType: e.type,
-            touchEvent: e.type === 'touchend'
-        });
-        
-        e.preventDefault();
-        e.stopPropagation(); // Prevent event bubbling
-        
-        // Visual feedback for mobile users
-        startBtn.style.backgroundColor = '#ff5722';
-        setTimeout(() => {
-            startBtn.style.backgroundColor = '';
-        }, 200);
-        
-        if (!selectedCharacter) {
-            console.warn('⚠️ No character selected yet');
-            // Show visual feedback instead of alert
-            startBtn.textContent = 'SELECT CHARACTER FIRST!';
-            setTimeout(() => {
-                startBtn.textContent = 'Start Game';
-            }, 2000);
-            return;
-        }
-        
-        if (startBtn.disabled) {
-            console.warn('⚠️ Start button is disabled');
-            return;
-        }
-        
-        console.log('🚀 Calling startGame()...');
-        startGame();
-    };
-    
-    // Add comprehensive event listeners with debugging
-    if (chooseTazBtn) {
-        chooseTazBtn.addEventListener('click', (e) => {
-            console.log('🖱️ Taz click event');
-            e.preventDefault();
-            e.stopPropagation();
-            selectTaz();
-        });
-        chooseTazBtn.addEventListener('touchend', (e) => {
-            console.log('👆 Taz touch event');
-            e.preventDefault();
-            e.stopPropagation();
-            selectTaz();
-        });
-        chooseTazBtn.addEventListener('touchstart', (e) => {
-            console.log('👆 Taz touchstart event');
-            e.preventDefault();
-            // Visual feedback
-            chooseTazBtn.style.transform = 'scale(0.95)';
-        });
-        chooseTazBtn.addEventListener('touchcancel', (e) => {
-            console.log('👆 Taz touchcancel event');
-            chooseTazBtn.style.transform = '';
-        });
-    }
-    
-    if (chooseChloeBtn) {
-        chooseChloeBtn.addEventListener('click', (e) => {
-            console.log('🖱️ Chloe click event');
-            e.preventDefault();
-            e.stopPropagation();
-            selectChloe();
-        });
-        chooseChloeBtn.addEventListener('touchend', (e) => {
-            console.log('👆 Chloe touch event');
-            e.preventDefault();
-            e.stopPropagation();
-            selectChloe();
-        });
-        chooseChloeBtn.addEventListener('touchstart', (e) => {
-            console.log('👆 Chloe touchstart event');
-            e.preventDefault();
-            // Visual feedback
-            chooseChloeBtn.style.transform = 'scale(0.95)';
-        });
-        chooseChloeBtn.addEventListener('touchcancel', (e) => {
-            console.log('👆 Chloe touchcancel event');
-            chooseChloeBtn.style.transform = '';
-        });
-    }
-    
-    if (startBtn) {
-        // Add multiple event types for better mobile compatibility
-        startBtn.addEventListener('click', (e) => {
-            console.log('🖱️ Start button click event');
-            handleStartGame(e);
-        });
-        startBtn.addEventListener('touchend', (e) => {
-            console.log('👆 Start button touch event');
-            handleStartGame(e);
-        });
-        startBtn.addEventListener('touchstart', (e) => {
-            console.log('👆 Start button touchstart event');
-            e.preventDefault();
-            // Visual feedback
-            if (!startBtn.disabled) {
-                startBtn.style.transform = 'scale(1.02)';
-                startBtn.style.backgroundColor = '#d32f2f';
-            }
-        });
-        startBtn.addEventListener('touchcancel', (e) => {
-            console.log('👆 Start button touchcancel event');
-            startBtn.style.transform = '';
-            startBtn.style.backgroundColor = '';
-        });
-        
-        // Add tap event for iOS devices
-        let tapTimeout;
-        startBtn.addEventListener('touchstart', (e) => {
-            tapTimeout = setTimeout(() => {
-                console.log('👆 Start button long tap detected');
-                if (!startBtn.disabled) {
-                    handleStartGame(e);
-                }
-            }, 500);
-        });
-        startBtn.addEventListener('touchend', (e) => {
-            clearTimeout(tapTimeout);
-        });
-        startBtn.addEventListener('touchmove', (e) => {
-            clearTimeout(tapTimeout);
-        });
-    }
-    
-    // Additional debugging for mobile devices
-    document.addEventListener('touchstart', (e) => {
-        console.log('📱 Global touchstart detected on:', e.target.tagName, e.target.id, e.target.className);
     });
-    
-    document.addEventListener('touchend', (e) => {
-        console.log('📱 Global touchend detected on:', e.target.tagName, e.target.id, e.target.className);
-    });
-    
-    // Test if we can set a default character for debugging
-    setTimeout(() => {
-        if (!selectedCharacter) {
-            console.log('🔧 Debug: Auto-selecting Taz for testing');
-            selectTaz();
-        }
-    }, 1000);
-    
-    // Restart button event listener
-    document.getElementById('restart-button').addEventListener('click', resetGame);
+
+    // Event listeners - add both click and touch support for mobile
+    addButtonListener(document.getElementById('start-button'), startGame);
+    addButtonListener(document.getElementById('restart-button'), resetGame);
     
     // Input handlers
     window.addEventListener('keydown', handleKeyDown);
@@ -367,8 +176,8 @@ function init() {
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mouseup', handleMouseUp);
     
-    // Start the start screen render loop to keep it responsive
-    startScreenRenderLoop();
+    // Initial render
+    render();
     
     // Check if dark mode is enabled
     isDarkMode = document.body.classList.contains('dark-mode');
@@ -377,64 +186,30 @@ function init() {
     window.updateGameTheme = function(darkModeEnabled) {
         isDarkMode = darkModeEnabled;
     };
-    
-    // Initialize leaderboard system
-    if (window.initializeLeaderboardSystem) {
-        setTimeout(async () => {
-            try {
-                const success = await window.initializeLeaderboardSystem();
-                if (success) {
-                    console.log('✅ Leaderboard system ready for high score checks');
-                } else {
-                    console.warn('⚠️ Leaderboard system initialization failed');
-                }
-            } catch (error) {
-                console.error('❌ Error initializing leaderboard system:', error);
-            }
-        }, 100); // Small delay to ensure all scripts are loaded
-    }
 }
 
 // Function to handle canvas resizing
 function resizeCanvas() {
     if (!canvas || !ctx) return;
-    
-    // Use device pixel ratio for crisp rendering on mobile
-    const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap at 2x for performance
-    const rect = canvas.getBoundingClientRect();
-    
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    
-    ctx.scale(dpr, dpr);
-    canvas.style.width = rect.width + 'px';
-    canvas.style.height = rect.height + 'px';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     
     // Update ground position
-    ground.y = canvas.height / dpr - GROUND_HEIGHT;
-    
-    // Debug logging for ground position
-    console.log('Ground position updated:', {
-        canvasHeight: canvas.height,
-        dpr: dpr,
-        groundHeight: GROUND_HEIGHT,
-        calculatedGroundY: ground.y,
-        visibleCanvasHeight: canvas.height / dpr
-    });
+    ground.y = canvas.height - GROUND_HEIGHT;
     
     // Ensure crisp pixel art rendering after resize
     ctx.imageSmoothingEnabled = false;
-    
-    // Mobile-specific canvas optimizations
-    if ('ontouchstart' in window) {
-        ctx.textRenderingOptimization = 'optimizeSpeed';
-    }
 
     // If the game is over or not started, the main gameLoop isn't running render(),
     // so we might need to manually call render() here to update the static background elements.
+    // However, if the game IS running, gameLoop will handle rendering.
+    // For simplicity and to avoid potential double rendering issues if gameLoop is active,
+    // we can just let the gameLoop handle it if active, or if not, just update static elements.
+    // A simple render() call here should be okay as it redraws the current state.
     if (!gameStarted || gameOver) { 
         render(); // Redraw static elements or game over screen
     } 
+    // If game is active, gameLoop will pick up the new dimensions in its next frame.
 }
 
 // Helper to get current character sprite
@@ -550,49 +325,17 @@ function loadAssets() {
 
 // Start the game
 async function startGame() {
-    console.log('🚀 === START GAME FUNCTION CALLED ===');
-    console.log('🎮 Current state:', {
-        selectedCharacter,
-        gameStarted,
-        gameOver,
-        startScreenDisplay: startScreen?.style?.display
-    });
-    
     // Default to Taz if none selected (should not happen)
-    if (!selectedCharacter) {
-        console.warn('⚠️ No character selected, defaulting to Taz');
-        selectedCharacter = 'taz';
-    }
-    
-    // Initialize audio for Safari compatibility
-    console.log('🔊 Initializing audio...');
-    try {
-        if (window.initializeAudio) {
-            await window.initializeAudio();
-            console.log('✅ Audio initialized successfully');
-        }
-    } catch (error) {
-        console.warn('⚠️ Audio initialization failed (continuing without audio):', error);
-    }
-    
-    console.log('🎮 Setting game state...');
+    if (!selectedCharacter) selectedCharacter = 'taz';
     gameStarted = true;
     gameOver = false;
-    
-    console.log('🎮 Hiding screens...');
     startScreen.style.display = 'none';
     gameOverScreen.style.display = 'none';
-    
-    console.log('🎮 Resetting score...');
     score = 0;
     updateScore();
     
-    console.log('🎮 Dispatching mobile game start event...');
-    // Dispatch mobile game start event
-    document.dispatchEvent(new CustomEvent('game:start'));
-    
     // Game start setup
-    console.log('🎮 Creating Supabase session...');
+    
     // Create a new game session in Supabase if available
     try {
         if (window.supabaseHelpers) {
@@ -600,112 +343,57 @@ async function startGame() {
                 selectedCharacter,
                 isDarkMode
             );
-            console.log('✅ Supabase session created:', currentSession);
-        } else {
-            console.log('⚠️ Supabase helpers not available');
         }
     } catch (err) {
         console.error('Error creating game session:', err);
         currentSession = null;
     }
     
-    console.log('🎮 Showing mobile hint...');
-    // Show mobile hint if available
-    if (window.showMobileHint) {
-        window.showMobileHint('Game started! Tap to flap!', 2000);
-    }
+    // Only play sound effects, no continuous background music
+    // Theme music is disabled by default
     
-    console.log('🎮 Setting up Mario position...');
     // Reset mario position with a better head start
     mario.y = 230; // Start even higher in the air
     mario.velocity = -3.0 * 60; // Stronger initial upward velocity (-180 px/sec)
     mario.velocityX = 0.5 * 60; // Small initial forward momentum (30 px/sec)
-    mario.x = 60; // Reset X position
+    mario.x = 80; // Reset X position
     mario.floatTimer = FLOAT_DURATION_SECONDS * 1.33; // Start with float timer active (a bit more than one flap's worth)
     mario.smoothRotation = 0; // Reset rotation
     mario.animationFrameCount = 0;
     
-    console.log('🎮 Clearing pipes...');
     // Clear pipes
     pipes = [];
     
-    console.log('🎮 Starting game loop...');
     // Start game loop
     lastTime = performance.now(); // Initialize lastTime for deltaTime calculation
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
     }
-    
-    console.log('🎮 Calling gameLoop()...');
     gameLoop();
-    
-    console.log('✅ === START GAME FUNCTION COMPLETED ===');
 }
 
 // Reset the game
 function resetGame() {
-    // Reset mario state
-    mario.x = 60;
-    mario.y = 300;
+    // Reset player variables before starting
     mario.velocity = 0;
     mario.velocityX = 0;
-    mario.isFlapping = false;
-    mario.frameCount = 0;
-    mario.animationFrameCount = 0;
-    mario.floatTimer = 0;
+    mario.rotation = 0;
     mario.smoothRotation = 0;
-    mario.holdTimer = 0;
-    mario.lastFlapTime = 0;
-    mario.perfectFlaps = 0;
-    mario.momentum = 0;
+    mario.x = 80;
+    mario.floatTimer = 0;
+    // Reset player properties
     
-    // Reset game state
-    pipes = [];
-    particles = [];
-    bonusTexts = [];
-    score = 0;
-    gameStarted = false;
-    gameOver = false;
-    lastPipeSpawn = 0;
-    
-    // Reset difficulty scaling
-    difficultyMultiplier = 1.0;
-    currentPipeSpeed = BASE_PIPE_SPEED_PPS;
-    currentGravity = BASE_GRAVITY_ACCEL;
-    currentPipeGap = BASE_PIPE_GAP;
-    currentSpawnInterval = BASE_PIPE_SPAWN_INTERVAL;
-    
-    // Reset visual effects
+    // Reset canvas effects
     canvas.style.filter = 'none';
     canvas.style.transition = 'none';
     
-    // Clear any existing animation frames first
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-    }
+    // Reset container effects
+    const gameContainer = document.querySelector('.game-container');
+    gameContainer.style.boxShadow = 'none';
     
-    // Hide game over screen and show start screen
-    gameOverScreen.style.display = 'none';
-    startScreen.style.display = 'flex';
+    // Prepare game restart
     
-    // Update score display
-    scoreDisplay.textContent = '0';
-    
-    // Start a simple render loop for the start screen to keep it responsive
-    startScreenRenderLoop();
-}
-
-// Simple render loop for start screen to prevent freeze
-function startScreenRenderLoop() {
-    // Only render if we're on the start screen
-    if (!gameStarted && !gameOver && startScreen.style.display === 'flex') {
-        // Add some subtle animation to mario on start screen (gentle bobbing)
-        mario.animationFrameCount += 0.03; // Slow animation
-        mario.y = 300 + Math.sin(mario.animationFrameCount) * 3; // Gentle bobbing motion
-        
-        render();
-        animationFrameId = requestAnimationFrame(startScreenRenderLoop);
-    }
+    startGame();
 }
 
 // Game loop
@@ -724,74 +412,35 @@ function gameLoop() {
 
 // Make mario flap with floatier physics and smooth forward movement
 function flap() {
-    const currentTime = Date.now();
-    const timeSinceLastFlap = (currentTime - mario.lastFlapTime) / 1000; // Convert to seconds
-    
-    // Calculate timing bonus for well-spaced flaps
-    let flapPower = BASE_FLAP_VELOCITY;
-    let momentumBonus = 1.0;
-    
-    // Perfect timing bonus (0.2-0.4 seconds between flaps is optimal)
-    if (timeSinceLastFlap >= 0.2 && timeSinceLastFlap <= 0.4) {
-        flapPower *= 1.15; // 15% stronger flap
-        momentumBonus = 1.25;
-        mario.perfectFlaps++;
-        
-        // Visual feedback for perfect timing
-        createEnhancedParticles('perfect');
-        
-        // Mobile haptic feedback for perfect timing
-        if (window.triggerHaptic) {
-            window.triggerHaptic('success');
-        }
-    } else if (timeSinceLastFlap < 0.1) {
-        // Rapid tapping penalty - weaker flaps
-        flapPower *= 0.8;
-        momentumBonus = 0.7;
-        
-        // Light haptic feedback for rapid tapping
-        if (window.triggerHaptic) {
-            window.triggerHaptic('light');
-        }
-    } else {
-        // Normal flap haptic feedback
-        if (window.triggerHaptic) {
-            window.triggerHaptic('light');
-        }
-    }
-    
-    // Preserve some momentum from previous movement
-    if (mario.velocity > 0) { // If falling
-        mario.momentum = mario.velocity * MOMENTUM_PRESERVATION;
-    }
-    
-    // Apply enhanced flap velocity with momentum consideration
-    mario.velocity = flapPower - (mario.momentum * 0.3);
-    
-    // Enhanced float timer with difficulty scaling
-    mario.floatTimer = FLOAT_DURATION_SECONDS * (1 + mario.perfectFlaps * 0.02);
+    // Set vertical velocity and activate float timer
+    mario.velocity = FLAP_VELOCITY_SET;
     mario.isFlapping = true;
-    mario.lastFlapTime = currentTime;
+    mario.floatTimer = FLOAT_DURATION_SECONDS; // Set float timer (in seconds)
     
-    // Dynamic forward movement based on timing and current speed
-    const forwardBoost = FORWARD_LEAP_VEL_CHANGE_PPS * momentumBonus;
-    mario.velocityX += forwardBoost;
+    // Add forward velocity impulse
+    mario.velocityX += FORWARD_LEAP_VEL_CHANGE_PPS;
     
-    // Enhanced speed capping with smoother transitions
-    const maxSpeed = MAX_FORWARD_SPEED_PPS * (1 + difficultyMultiplier * 0.1);
-    if (mario.velocityX > maxSpeed) {
-        mario.velocityX = maxSpeed;
+    // Cap maximum forward speed
+    if (mario.velocityX > MAX_FORWARD_SPEED_PPS) {
+        mario.velocityX = MAX_FORWARD_SPEED_PPS;
     }
-    if (mario.velocityX < -maxSpeed * 0.5) {
-        mario.velocityX = -maxSpeed * 0.5;
+    if (mario.velocityX < -MAX_FORWARD_SPEED_PPS) { // Cap negative speed too if character can move backward
+        mario.velocityX = -MAX_FORWARD_SPEED_PPS;
     }
+
+    // Create smoke particles immediately upon flapping
+    // The createSmokeTrail() call was already in update() based on mario.isFlapping, that's fine.
     
-    // Create enhanced particle effects
-    createEnhancedParticles('normal');
+    // Reset flap count (if mario.flapCount is used elsewhere, seems it's not fully implemented yet)
+    // setTimeout(() => {
+    //     mario.flapCount = 0; 
+    // }, 500);
     
-    // Play flap sound
+    // Use 8-bit audio if available
     if (window.eightBitAudio) {
-        window.eightBitAudio.playFlap();
+        window.eightBitAudio.playJumpSound();
+    } else {
+        flapSoundContext = window.gameSounds.flap();
     }
 }
 
@@ -814,43 +463,20 @@ function updateParticles(deltaTime) {
     }
 }
 
-// Create enhanced smoke trail particles with different effects
-function createEnhancedParticles(type = 'normal') {
-    let numParticles, colors, speeds, sizes;
-    
-    switch(type) {
-        case 'perfect':
-            numParticles = 8 + Math.floor(Math.random() * 6);
-            colors = ['#FFD700', '#FFA500', '#FFFF00']; // Gold colors for perfect timing
-            speeds = { multiplier: 1.5 };
-            sizes = { base: 6, variation: 8 };
-            break;
-        case 'score':
-            numParticles = 12 + Math.floor(Math.random() * 8);
-            colors = ['#00FF00', '#32CD32', '#90EE90']; // Green colors for scoring
-            speeds = { multiplier: 2.0 };
-            sizes = { base: 4, variation: 6 };
-            break;
-        default: // 'normal'
-            numParticles = 6 + Math.floor(Math.random() * 4);
-            colors = ['#FFFFFF', '#EEEEEE', '#DDDDDD']; // White/gray for normal
-            speeds = { multiplier: 1.0 };
-            sizes = { base: 4, variation: 6 };
-    }
+// Create smoke trail particles when character jumps
+function createSmokeTrail() {
+    // Create 5-8 particles for each flap
+    const numParticles = 5 + Math.floor(Math.random() * 4);
     
     for (let i = 0; i < numParticles; i++) {
-        const angle = (Math.random() - 0.5) * Math.PI; // Random angle
-        const speed = (0.5 + Math.random() * 0.5) * speeds.multiplier;
-        
         particles.push({
-            x: mario.x + mario.width / 2,
-            y: mario.y + mario.height / 2 + (Math.random() * 10 - 5),
-            size: sizes.base + Math.random() * sizes.variation,
-            speedX_pps: (PARTICLE_MIN_SPEED_X_PPS + Math.random() * (PARTICLE_MAX_SPEED_X_PPS - PARTICLE_MIN_SPEED_X_PPS)) * speed,
-            speedY_pps: (PARTICLE_MIN_SPEED_Y_PPS + Math.random() * (PARTICLE_MAX_SPEED_Y_PPS - PARTICLE_MIN_SPEED_Y_PPS)) * speed,
-            life: 1.0 + (type === 'perfect' ? 0.5 : 0), // Perfect particles last longer
-            color: colors[Math.floor(Math.random() * colors.length)],
-            type: type
+            x: mario.x,
+            y: mario.y + mario.height/2 + (Math.random() * 10 - 5),
+            size: 4 + Math.random() * 6,  // Pixelated small squares
+            speedX_pps: PARTICLE_MIN_SPEED_X_PPS + Math.random() * (PARTICLE_MAX_SPEED_X_PPS - PARTICLE_MIN_SPEED_X_PPS),
+            speedY_pps: PARTICLE_MIN_SPEED_Y_PPS + Math.random() * (PARTICLE_MAX_SPEED_Y_PPS - PARTICLE_MIN_SPEED_Y_PPS),
+            life: 1.0,  // Full opacity to start
+            color: Math.random() > 0.5 ? '#FFFFFF' : '#EEEEEE'  // White/light gray
         });
     }
 }
@@ -873,277 +499,116 @@ function renderParticles() {
     ctx.globalAlpha = 1.0;
 }
 
-// Update game state with enhanced physics and progressive difficulty
+// Update game state
 function update(deltaTime) {
     if (!gameStarted || gameOver) return;
     
-    // Calculate progressive difficulty based on score
-    updateDifficulty();
+    // Update mario with floatier physics and forward leap
     
-    // Enhanced physics updates
-    updateEnhancedPhysics(deltaTime);
-    
-    // Update character animation and effects
-    updateCharacterAnimation(deltaTime);
-    
-    // Handle collision detection with enhanced precision
-    updateCollisions();
-    
-    // Manage pipe system with dynamic generation
-    updatePipeSystem(deltaTime);
-    
-    // Update particle systems
-    updateParticles(deltaTime);
-    
-    // Update bonus text displays
-    updateBonusTexts(deltaTime);
-}
-
-// Calculate and update progressive difficulty scaling
-function updateDifficulty() {
-    // Base difficulty scaling
-    difficultyMultiplier = 1.0 + (score * DIFFICULTY_SCALE_RATE);
-    difficultyMultiplier = Math.min(difficultyMultiplier, MAX_DIFFICULTY_MULTIPLIER);
-    
-    // Update pipe speed with scaling
-    currentPipeSpeed = BASE_PIPE_SPEED_PPS * (1 + score * SPEED_INCREASE_RATE);
-    currentPipeSpeed = Math.min(currentPipeSpeed, BASE_PIPE_SPEED_PPS * 2.2); // Cap at 2.2x base speed
-    
-    // Update gravity (slightly increases with difficulty)
-    currentGravity = BASE_GRAVITY_ACCEL * (1 + difficultyMultiplier * 0.15);
-    
-    // Update pipe gap (decreases with score, but not too much)
-    currentPipeGap = Math.max(MIN_PIPE_GAP, BASE_PIPE_GAP - (score * GAP_DECREASE_RATE));
-    
-    // Update spawn interval (faster spawning at higher scores)
-    currentSpawnInterval = Math.max(MIN_PIPE_SPAWN_INTERVAL, 
-        BASE_PIPE_SPAWN_INTERVAL - (score * 25));
-}
-
-// Enhanced physics system with variable gravity and air resistance
-function updateEnhancedPhysics(deltaTime) {
-    // Hold timer tracking for input
+    // Simple hold timer tracking
     if (mario.holdTimer > 0) {
         mario.holdTimer++;
     }
     
-    // Variable gravity system
-    let gravityToApply = currentGravity;
-    
-    // Float effect with enhanced physics
+    // Apply gravity
+    let currentGravity = GRAVITY_ACCEL;
     if (mario.floatTimer > 0) {
-        gravityToApply *= FLOAT_GRAVITY_MULTIPLIER;
-        
-        // Perfect timing bonus - reduced gravity for skilled players
-        if (mario.perfectFlaps > 2) {
-            gravityToApply *= PRECISION_FLAP_BONUS;
-        }
-        
+        currentGravity *= FLOAT_GRAVITY_MULTIPLIER;
         mario.floatTimer -= deltaTime;
-        if (mario.floatTimer < 0) mario.floatTimer = 0;
+        if (mario.floatTimer < 0) mario.floatTimer = 0; // Ensure it doesn't go negative
     }
+    mario.velocity += currentGravity * deltaTime;
     
-    // Variable gravity based on velocity (faster falling = stronger gravity)
-    if (mario.velocity > 200) { // If falling fast
-        gravityToApply *= VARIABLE_GRAVITY_FACTOR;
-    }
-    
-    // Apply gravity with terminal velocity
-    mario.velocity += gravityToApply * deltaTime;
-    if (mario.velocity > TERMINAL_VELOCITY) {
-        mario.velocity = TERMINAL_VELOCITY;
-    }
-    
-    // Apply air resistance for more realistic movement
-    mario.velocity *= Math.pow(AIR_RESISTANCE_FACTOR, 60 * deltaTime);
-    
-    // Apply vertical movement
-    mario.y += mario.velocity * deltaTime;
-    
-    // Enhanced horizontal movement with improved drag
-    mario.x += mario.velocityX * deltaTime;
-    
-    // Progressive drag system (more drag at higher speeds)
-    const dragFactor = FORWARD_DRAG_FACTOR - (Math.abs(mario.velocityX) / 1000) * 0.02;
-    mario.velocityX *= Math.pow(dragFactor, 60 * deltaTime);
-    
-    // Fixed character bounds to keep character on the left side
-    const minX = 40; // Fixed minimum position - no score-based movement
-    const maxX = Math.min(canvas.width / 4, 100); // Reduced maximum to keep character more left-aligned
-    
-    if (mario.x < minX) {
-        mario.x = minX;
-        mario.velocityX = Math.max(0, mario.velocityX); // Only stop leftward movement
-    } else if (mario.x > maxX) {
-        mario.x = maxX;
-        mario.velocityX = Math.min(0, mario.velocityX); // Only stop rightward movement
-    }
-    
-    // Enhanced rotation system
-    const maxRotation = 0.6;
-    const targetRotation = Math.max(-maxRotation, Math.min(maxRotation, 
-        mario.velocity / (ROTATION_SENSITIVITY * 10)));
-    
-    // Smoother rotation interpolation
-    mario.smoothRotation = mario.smoothRotation * ROTATION_SMOOTHING + 
-        targetRotation * (1 - ROTATION_SMOOTHING);
-}
-
-// Update character animation and visual effects
-function updateCharacterAnimation(deltaTime) {
+    // Update character animation frame
     mario.animationFrameCount += MARIO_ANIM_FPS * deltaTime;
     
-    // Create enhanced particle effects during flapping
     if (mario.isFlapping) {
-        createEnhancedParticles('normal');
+        // Create smoke particles when flapping
+        createSmokeTrail();
         mario.isFlapping = false;
     }
     
-    // Reset perfect flap counter gradually
-    if (mario.perfectFlaps > 0 && Math.random() < 0.001) {
-        mario.perfectFlaps = Math.max(0, mario.perfectFlaps - 1);
+    // Apply vertical velocity to position
+    mario.y += mario.velocity * deltaTime;
+    
+    // Apply horizontal velocity to position with gradual slowdown
+    mario.x += mario.velocityX * deltaTime;
+    // Apply drag: V_new = V_old * (DRAG_FACTOR_PER_FRAME ^ (TARGET_FPS * deltaTime))
+    // This ensures drag is consistent regardless of frame rate.
+    mario.velocityX *= Math.pow(FORWARD_DRAG_FACTOR, 60 * deltaTime);
+    
+    // Keep character within reasonable bounds
+    const minX = 40;
+    const maxX = canvas.width / 3;
+    if (mario.x < minX) {
+        mario.x = minX;
+        mario.velocityX = 0;
+    } else if (mario.x > maxX) {
+        mario.x = maxX;
+        mario.velocityX = 0;
     }
-}
-
-// Enhanced collision detection
-function updateCollisions() {
-    // Ground collision with enhanced response
+    
+    // Visual feedback - smooth rotation based on velocity
+    const targetRotation = Math.max(-0.5, Math.min(0.5, mario.velocity / 10));
+    
+    // Smoothly interpolate rotation for more fluid movement
+    mario.smoothRotation = mario.smoothRotation * 0.8 + targetRotation * 0.2;
+    mario.rotation = mario.smoothRotation;
+    
+    // Check for collisions with ground
     if (mario.y + mario.height > ground.y) {
         mario.y = ground.y - mario.height;
         gameEnd();
-        return;
     }
     
-    // Ceiling collision with bounce effect
+    // Check for collisions with ceiling
     if (mario.y < 0) {
         mario.y = 0;
-        mario.velocity = Math.abs(mario.velocity) * 0.3; // Small bounce effect
+        mario.velocity = 0;
     }
-}
-
-// Enhanced pipe system with dynamic generation
-function updatePipeSystem(deltaTime) {
-    const currentTime = Date.now();
     
-    // Dynamic pipe spawning based on difficulty
-    if (currentTime - lastPipeSpawn > currentSpawnInterval) {
-        spawnEnhancedPipe();
+    // Spawn pipes
+    const currentTime = Date.now();
+    if (currentTime - lastPipeSpawn > PIPE_SPAWN_INTERVAL) {
+        spawnPipe();
         lastPipeSpawn = currentTime;
     }
     
-    // Update and check pipe collisions
+    // Update pipes
     for (let i = pipes.length - 1; i >= 0; i--) {
         const pipe = pipes[i];
+        pipe.x -= PIPE_SPEED_PPS * deltaTime;
         
-        // Move pipes with current speed
-        pipe.x -= currentPipeSpeed * deltaTime;
-        
-        // Remove off-screen pipes
+        // Check if pipe is off screen
         if (pipe.x + pipe.width < 0) {
             pipes.splice(i, 1);
             continue;
         }
         
-        // Enhanced collision detection with smaller hitbox for fairness
-        const hitboxReduction = 0; // Removed hitbox reduction - collision should be exact
-        const playerHitbox = {
-            x: mario.x + hitboxReduction,
-            y: mario.y + hitboxReduction,
-            width: mario.width - (hitboxReduction * 2),
-            height: mario.height - (hitboxReduction * 2)
-        };
-        
-        // Debug logging
-        if (pipes.length > 0) {
-            const isOverlapping = (mario.x < pipe.x + pipe.width && mario.x + mario.width > pipe.x);
-            if (isOverlapping) {
-                console.log('Player overlapping with pipe horizontally', {
-                    playerX: mario.x,
-                    playerY: mario.y,
-                    playerWidth: mario.width,
-                    playerHeight: mario.height,
-                    pipeX: pipe.x,
-                    pipeTopHeight: pipe.top.height,
-                    pipeBottomY: pipe.bottom.y
-                });
-            }
-        }
-        
-        // Check collision with basic, reliable collision detection
-        if (checkCollision(playerHitbox, pipe.top) || 
-            checkCollision(playerHitbox, pipe.bottom)) {
-            console.log('Collision detected!'); // Debug log
+        // Check for collisions with pipes or if player tries to go around (force them through the gap)
+        if (checkCollision(mario, pipe.top) || checkCollision(mario, pipe.bottom) || 
+            // Check if player tries to fly over or under the pipes when they're in range
+            (mario.x + mario.width > pipe.x && mario.x < pipe.x + pipe.width && 
+             (mario.y < pipe.top.y + pipe.top.height || mario.y + mario.height > pipe.bottom.y))) {
             gameEnd();
-            return;
         }
         
-        // Additional simple collision check as backup
-        const isInPipeHorizontally = mario.x < pipe.x + pipe.width && mario.x + mario.width > pipe.x;
-        const isInTopPipe = mario.y < pipe.top.height;
-        const isInBottomPipe = mario.y + mario.height > pipe.bottom.y;
-        
-        if (isInPipeHorizontally && (isInTopPipe || isInBottomPipe)) {
-            console.log('Simple collision detected!');
-            gameEnd();
-            return;
-        }
-        
-        // Score detection with visual feedback
+        // Check if mario passed the pipe
         if (!pipe.passed && mario.x > pipe.x + pipe.width) {
             pipe.passed = true;
-            
-            // Calculate bonus scoring
-            let scoreToAdd = 1;
-            let bonusReasons = [];
-            
-            // Difficulty bonus
-            if (pipe.scoreMultiplier > 1) {
-                scoreToAdd += 1;
-                bonusReasons.push('TIGHT GAP');
-            }
-            
-            // Perfect flap bonus
-            if (mario.perfectFlaps > 2) {
-                scoreToAdd += 1;
-                bonusReasons.push('PERFECT TIMING');
-            }
-            
-            // Speed bonus at high difficulty
-            if (difficultyMultiplier > 2.0) {
-                scoreToAdd += 1;
-                bonusReasons.push('HIGH SPEED');
-            }
-            
-            // Consecutive perfect flaps mega bonus
-            if (mario.perfectFlaps > 5) {
-                scoreToAdd += 2;
-                bonusReasons.push('SKILL MASTER');
-            }
-            
-            score += scoreToAdd;
+            score++;
             updateScore();
             
-            // Enhanced visual feedback for bonus scoring
-            if (scoreToAdd > 1) {
-                createEnhancedParticles('score');
-                // Show bonus text briefly
-                showBonusText(bonusReasons, scoreToAdd);
-            } else {
-                createEnhancedParticles('normal');
-            }
-            
-            // Enhanced audio feedback
+            // Use 8-bit audio if available
             if (window.eightBitAudio) {
                 window.eightBitAudio.playScoreSound();
-            } else if (window.gameSounds && typeof window.gameSounds.score === 'function') {
-                try {
-                    scoreSoundContext = window.gameSounds.score();
-                } catch (error) {
-                    console.warn('Score sound failed:', error);
-                }
+            } else {
+                scoreSoundContext = window.gameSounds.score();
             }
         }
     }
+    
+    updateParticles(deltaTime);
 }
 
 // Render game
@@ -1165,69 +630,27 @@ function render() {
     if (gameStarted && !gameOver) {
         const indicatorX = 30;
         const indicatorY = 100;
-        const indicatorHeight = 120;
-        const indicatorWidth = 10;
+        const indicatorHeight = 100;
+        const indicatorWidth = 8;
         
-        // Enhanced background bar with difficulty coloring
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        // Background bar
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.fillRect(indicatorX, indicatorY, indicatorWidth, indicatorHeight);
         
-        // Difficulty indicator (border color)
-        let difficultyColor = '#00FF00'; // Green for easy
-        if (difficultyMultiplier > 1.5) difficultyColor = '#FFFF00'; // Yellow for medium
-        if (difficultyMultiplier > 2.0) difficultyColor = '#FF6600'; // Orange for hard
-        if (difficultyMultiplier > 2.3) difficultyColor = '#FF0000'; // Red for extreme
-        
-        ctx.strokeStyle = difficultyColor;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(indicatorX - 1, indicatorY - 1, indicatorWidth + 2, indicatorHeight + 2);
-        
-        // Enhanced velocity indicator
-        const maxDisplayVelocity = 600; // Adjusted for new physics
-        const normalizedVelocity = (mario.velocity + maxDisplayVelocity/2) / maxDisplayVelocity;
+        // Simple velocity indicator
+        const normalizedVelocity = (mario.velocity + 8) / 16; // Map from -8 to 8 to 0 to 1
         const clampedVelocity = Math.max(0, Math.min(1, normalizedVelocity));
         const velocityHeight = indicatorHeight * clampedVelocity;
         
-        // Enhanced color coding based on physics state
+        // Color based on velocity (green for upward, yellow for neutral, red for fast downward)
         let velocityColor;
-        if (mario.floatTimer > 0) {
-            velocityColor = '#FFD700'; // Gold during float
-        } else if (mario.velocity < -150) {
-            velocityColor = '#00FF00'; // Green for strong upward
-        } else if (mario.velocity < -50) {
-            velocityColor = '#90EE90'; // Light green for upward
-        } else if (mario.velocity < 100) {
-            velocityColor = '#FFFF00'; // Yellow for neutral
-        } else if (mario.velocity < 300) {
-            velocityColor = '#FFA500'; // Orange for falling
-        } else {
-            velocityColor = '#FF0000'; // Red for fast falling
-        }
+        if (mario.velocity < -2) velocityColor = '#50C878'; // Green for upward
+        else if (mario.velocity < 2) velocityColor = '#FFD700'; // Yellow for neutral
+        else velocityColor = '#FF6347'; // Red for fast downward
         
         ctx.fillStyle = velocityColor;
         ctx.fillRect(indicatorX, indicatorY + indicatorHeight - velocityHeight, 
                     indicatorWidth, velocityHeight);
-        
-        // Perfect flap counter
-        if (mario.perfectFlaps > 0) {
-            ctx.fillStyle = '#FFD700';
-            ctx.font = '10px PressStart2P, monospace';
-            ctx.textAlign = 'left';
-            ctx.fillText(`PERFECT: ${mario.perfectFlaps}`, indicatorX + 15, indicatorY + 15);
-        }
-        
-        // Speed indicator
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '8px PressStart2P, monospace';
-        ctx.textAlign = 'left';
-        const speedPercent = Math.round((currentPipeSpeed / BASE_PIPE_SPEED_PPS - 1) * 100);
-        if (speedPercent > 0) {
-            ctx.fillText(`SPEED +${speedPercent}%`, indicatorX + 15, indicatorY + 35);
-        }
-        
-        // Difficulty display
-        ctx.fillStyle = difficultyColor;
-        ctx.fillText(`DIFF: ${difficultyMultiplier.toFixed(1)}x`, indicatorX + 15, indicatorY + 50);
     }
     
     // Draw the ground
@@ -1266,9 +689,6 @@ function render() {
     // Restore context
     ctx.restore();
     
-    // Render bonus texts
-    renderBonusTexts();
-    
     // Draw score with 8-bit style
     // Draw score in a pixelated rectangle box (no rounded corners for 8-bit style)
     const scoreText = score.toString();
@@ -1292,8 +712,27 @@ function render() {
 
 // Spawn a new pipe
 function spawnPipe() {
-    // Redirect to enhanced version
-    spawnEnhancedPipe();
+    const pipeWidth = 90; // Wider pipes for better visibility
+    const minHeight = 80; // Taller minimum pipe height
+    const maxHeight = canvas.height - PIPE_GAP - minHeight - GROUND_HEIGHT;
+    const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+    const bottomY = topHeight + PIPE_GAP;
+    
+    pipes.push({
+        x: canvas.width,
+        width: pipeWidth,
+        top: {
+            y: 0,
+            height: topHeight,
+            width: pipeWidth
+        },
+        bottom: {
+            y: bottomY,
+            height: canvas.height - bottomY,
+            width: pipeWidth
+        },
+        passed: false
+    });
 }
 
 // Check collision between two rectangles
@@ -1308,165 +747,59 @@ function checkCollision(rect1, rect2) {
 
 // End the game with GTA-style WASTED effect
 async function gameEnd() {
-    if (gameOver) return;
-    
-    console.log('🎮 === GAME END START ===');
     gameOver = true;
     
-    // Dispatch mobile game over event
-    document.dispatchEvent(new CustomEvent('game:over', { 
-        detail: { finalScore: score, highScore: highScore } 
-    }));
+    // Apply GTA-style effects
+    applyWastedEffect();
     
-    // Stop the game loop
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
+    // Use 8-bit audio if available
+    if (window.eightBitAudio) {
+        window.eightBitAudio.playHitSound();
+        setTimeout(() => {
+            window.eightBitAudio.playGameOverSound();
+        }, 500);
+    } else {
+        hitSoundContext = window.gameSounds.hit();
+        setTimeout(() => {
+            gameOverSoundContext = window.gameSounds.gameOver();
+        }, 500);
     }
     
-    // Enhanced crash effect with mobile feedback (with error protection)
-    try {
-        if (window.eightBitAudio && typeof window.eightBitAudio.playHit === 'function') {
-            window.eightBitAudio.playHit();
-            console.log('✅ Hit sound played');
-            
-            // Brief pause before game over sound
-            setTimeout(() => {
-                try {
-                    if (window.eightBitAudio && typeof window.eightBitAudio.playGameOver === 'function') {
-                        window.eightBitAudio.playGameOver();
-                        console.log('✅ Game over sound played');
-                    }
-                } catch (audioErr) {
-                    console.warn('⚠️ Error playing game over sound:', audioErr);
-                }
-            }, 500);
-        } else {
-            console.warn('⚠️ Audio system not available or playHit function missing');
-        }
-    } catch (audioErr) {
-        console.warn('⚠️ Error playing hit sound:', audioErr);
-    }
-    
-    // Mobile haptic feedback for game over
-    try {
-        if (window.triggerHaptic) {
-            window.triggerHaptic('error');
-        }
-    } catch (hapticErr) {
-        console.warn('⚠️ Error with haptic feedback:', hapticErr);
-    }
-    
-    // Apply visual effects
-    try {
-        applyWastedEffect();
-        gameOverEffect();
-    } catch (visualErr) {
-        console.warn('⚠️ Error with visual effects:', visualErr);
-    }
-    
-    // Update final score display and check for high scores
-    finalScoreDisplay.textContent = score;
-    
-    // Update high score if needed (this should happen before we check for leaderboard qualification)
+    // Update high score if needed
     if (score > highScore) {
         highScore = score;
         localStorage.setItem('flattenhundHighScore', highScore);
-        highScoreDisplay.textContent = highScore;
     }
     
-    // End game session in Supabase if available (non-blocking)
+    // Update game session in Supabase if available
     try {
         if (window.supabaseHelpers && currentSession) {
-            window.supabaseHelpers.endGameSession(
-                currentSession,
+            await window.supabaseHelpers.updateGameSession(
+                currentSession.id,
                 score,
-                Math.floor(performance.now() / 1000)
-            ).catch(err => console.error('Error ending game session:', err));
+                mario.boostUsedCount
+            );
         }
-    } catch (supabaseErr) {
-        console.warn('⚠️ Error with Supabase session end:', supabaseErr);
+    } catch (err) {
+        console.error('Error updating game session:', err);
     }
     
-    console.log('🎮 Starting game over screen timeout...');
+    // Update DOM elements
+    finalScoreDisplay.textContent = score;
+    highScoreDisplay.textContent = highScore;
     
-    // Show game over screen after a delay - much faster response
-    setTimeout(async () => {
-        console.log('🎮 === SHOWING GAME OVER SCREEN ===');
-        
-        try {
-            gameOverScreen.style.display = 'flex';
-            console.log('✅ Game over screen displayed');
-            
-            // IMPORTANT: Wait for leaderboard refresh to complete before checking high scores
-            console.log('🔄 Refreshing leaderboard before high score check...');
-            try {
-                if (window.refreshLeaderboard) {
-                    await window.refreshLeaderboard(); // Wait for completion
-                    console.log('✅ Leaderboard refresh completed, now checking high scores...');
-                }
-            } catch (err) {
-                console.error('❌ Error refreshing leaderboard:', err);
-            }
-            
-            // Check for high score qualification AFTER leaderboard is refreshed
-            setTimeout(() => {
-                if (window.checkAndPromptForPersonalBest) {
-                    try {
-                        console.log('🎯 Checking for high score qualification with score:', score);
-                        const result = window.checkAndPromptForPersonalBest(score);
-                        console.log('🎯 High score check result:', result);
-                    } catch (err) {
-                        console.error('❌ Error checking high score qualification:', err);
-                    }
-                } else {
-                    console.error('❌ checkAndPromptForPersonalBest function not available');
-                }
-            }, 300); // Shorter delay since leaderboard is already loaded
-            
-            // Mobile hint for restart
-            if (window.showMobileHint) {
-                setTimeout(() => {
-                    window.showMobileHint('Tap "Play Again" to restart!', 3000);
-                }, 1500); // Adjusted for faster screen appearance
-            }
-        } catch (gameOverErr) {
-            console.error('❌ Critical error in game over screen display:', gameOverErr);
-            // Force show the game over screen even if there are errors
-            if (gameOverScreen) {
-                gameOverScreen.style.display = 'flex';
-                console.log('🚨 Force-displayed game over screen after error');
-            }
-        }
-    }, 800); // Reduced from 2000ms to 800ms for much faster response
-    
-    console.log('🎮 === GAME END SETUP COMPLETE ===');
+    // Show game over screen immediately but keep the slow reveal animation
+    gameOverScreen.style.display = 'flex';
 }
-
-// Function to update score with mobile enhancements
+// Update score display
 function updateScore() {
     scoreDisplay.textContent = score;
     
-    // Check for high score achievements and update storage
-    if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('flattenhundHighScore', highScore);
-        highScoreDisplay.textContent = highScore;
-        
-        // Mobile haptic feedback for new high score
-        if (window.triggerHaptic) {
-            window.triggerHaptic('success');
-        }
-        
-        // Show mobile hint for high score
-        if (window.showMobileHint) {
-            window.showMobileHint(`New High Score: ${score}!`, 2000);
-        }
-    }
-    
-    // Dispatch score event for mobile optimization
-    document.dispatchEvent(new CustomEvent('game:score', { 
-        detail: { score: score, isHighScore: score > highScore } 
-    }));
+    // Add a small "flash" effect to the score display
+    scoreDisplay.style.transform = 'scale(1.2)';
+    setTimeout(() => {
+        scoreDisplay.style.transform = 'scale(1)';
+    }, 100);
 }
 
 // Apply GTA-style WASTED effect
@@ -1523,24 +856,11 @@ function handleKeyUp(e) {
     }
 }
 
-// Enhanced touch handlers with better mobile integration
 function handleTouchStart(e) {
     e.preventDefault();
-    
-    // Prevent multi-touch issues
-    if (e.touches.length > 1) return;
-    
     if (!gameOver) {
         if (!gameStarted) {
-            // Only start if character is selected
-            if (selectedCharacter) {
-                startGame();
-            } else {
-                // Show hint to select character
-                if (window.showMobileHint) {
-                    window.showMobileHint('Please select a character first!', 2000);
-                }
-            }
+            startGame();
         } else {
             flap();
             // Start tracking hold time
@@ -1555,18 +875,10 @@ function handleTouchEnd(e) {
     mario.holdTimer = 0;
 }
 
-// Enhanced mouse handlers for desktop/mobile hybrid devices
 function handleMouseDown(e) {
-    // Prevent if this is a touch device to avoid double events
-    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-        return;
-    }
-    
     if (!gameOver) {
         if (!gameStarted) {
-            if (selectedCharacter) {
-                startGame();
-            }
+            startGame();
         } else {
             flap();
             // Start tracking hold time
@@ -1584,179 +896,3 @@ function handleMouseUp(e) {
 
 // Initialize the game when the page loads
 window.addEventListener('load', init);
-
-// Enhanced pipe spawning with dynamic patterns
-function spawnEnhancedPipe() {
-    const pipeWidth = 85; // Fixed width for consistency
-    
-    // Calculate responsive safe boundaries based on screen size
-    const screenHeight = canvas.height / (Math.min(window.devicePixelRatio || 1, 2));
-    const isSmallScreen = screenHeight < 500;
-    
-    // Scale margins based on screen size
-    const safeTopMargin = isSmallScreen ? Math.max(40, screenHeight * 0.08) : 80;
-    const safeBottomMargin = GROUND_HEIGHT + (isSmallScreen ? Math.max(40, screenHeight * 0.08) : 80);
-    const availableHeight = screenHeight - safeTopMargin - safeBottomMargin;
-    
-    // Scale minimum gap based on screen size
-    let baseMinGap = isSmallScreen ? Math.max(100, screenHeight * 0.2) : 140;
-    let actualGap = Math.max(currentPipeGap, baseMinGap);
-    
-    console.log('Pipe generation params:', {
-        screenHeight,
-        isSmallScreen,
-        safeTopMargin,
-        safeBottomMargin,
-        availableHeight,
-        baseMinGap,
-        actualGap
-    });
-    
-    // Apply controlled difficulty scaling for gap (only slight reduction)
-    if (score >= 10) {
-        const maxReduction = isSmallScreen ? 15 : 20; // Less reduction on small screens
-        const reduction = Math.min(maxReduction, Math.floor(score / 5) * 2);
-        const absoluteMinGap = isSmallScreen ? Math.max(80, screenHeight * 0.15) : 120;
-        actualGap = Math.max(actualGap - reduction, absoluteMinGap);
-    }
-    
-    // Calculate the maximum possible top pipe height
-    const maxTopHeight = availableHeight - actualGap;
-    
-    // Ensure we have enough room for a reasonable pipe configuration
-    const minPipeHeight = isSmallScreen ? 40 : 60;
-    if (maxTopHeight < minPipeHeight) {
-        console.warn('Cannot create pipe: insufficient height available', {
-            maxTopHeight,
-            minPipeHeight,
-            availableHeight,
-            actualGap
-        });
-        return; // Don't create pipe if impossible
-    }
-    
-    // Calculate a reasonable range for top pipe height
-    const minTopHeight = Math.max(minPipeHeight, safeTopMargin);
-    const adjustedMaxHeight = Math.min(maxTopHeight, availableHeight - minPipeHeight);
-    
-    // Generate top pipe height within safe bounds
-    const topHeight = minTopHeight + Math.random() * (adjustedMaxHeight - minTopHeight);
-    const bottomY = topHeight + actualGap;
-    
-    // Validate the configuration before creating the pipe (using screen height not canvas height)
-    if (bottomY + minPipeHeight > screenHeight - GROUND_HEIGHT) {
-        console.warn('Pipe configuration invalid: bottom pipe would be too low', {
-            bottomY,
-            minPipeHeight,
-            screenHeight,
-            groundHeight: GROUND_HEIGHT
-        });
-        return; // Don't create invalid pipe
-    }
-    
-    if (topHeight < minTopHeight) {
-        console.warn('Pipe configuration invalid: top pipe would be too short', {
-            topHeight,
-            minTopHeight
-        });
-        return; // Don't create invalid pipe
-    }
-    
-    // Create validated pipe object (use canvas dimensions for actual rendering)
-    const newPipe = {
-        x: canvas.width,
-        width: pipeWidth,
-        actualGap: actualGap,
-        difficulty: difficultyMultiplier,
-        top: {
-            x: canvas.width,
-            y: 0,
-            height: topHeight,
-            width: pipeWidth
-        },
-        bottom: {
-            x: canvas.width,
-            y: bottomY,
-            height: screenHeight - bottomY - GROUND_HEIGHT,
-            width: pipeWidth
-        },
-        passed: false,
-        scoreMultiplier: actualGap < baseMinGap + 20 ? 2 : 1 // Bonus for tight gaps relative to screen
-    };
-    
-    // Final validation before adding
-    if (newPipe.bottom.height < minPipeHeight) {
-        console.warn('Bottom pipe too short, rejecting pipe', {
-            bottomHeight: newPipe.bottom.height,
-            minPipeHeight
-        });
-        return;
-    }
-    
-    console.log('Generated valid pipe:', {
-        topHeight: newPipe.top.height,
-        gap: actualGap,
-        bottomY: newPipe.bottom.y,
-        bottomHeight: newPipe.bottom.height,
-        screenHeight,
-        isSmallScreen
-    });
-    
-    pipes.push(newPipe);
-}
-
-// Enhanced collision detection with more precise boundaries
-function checkEnhancedCollision(rect1, rect2) {
-    // Slightly forgiving collision detection - reduced margin for better accuracy
-    const margin = 0.5; // Reduced from 2 to 0.5 pixels for better collision detection
-    
-    return (
-        rect1.x < rect2.x + rect2.width - margin &&
-        rect1.x + rect1.width > rect2.x + margin &&
-        rect1.y < rect2.y + rect2.height - margin &&
-        rect1.y + rect1.height > rect2.y + margin
-    );
-}
-
-// Show bonus text for enhanced scoring
-function showBonusText(reasons, points) {
-    const bonusText = {
-        text: `+${points} ${reasons[0]}`, // Show main reason
-        x: mario.x + mario.width + 20,
-        y: mario.y + mario.height / 2,
-        life: 2.0, // 2 seconds
-        color: points > 2 ? '#FFD700' : '#00FF00',
-        fontSize: points > 2 ? 14 : 12
-    };
-    bonusTexts.push(bonusText);
-    
-    // Limit number of bonus texts on screen
-    if (bonusTexts.length > 3) {
-        bonusTexts.shift();
-    }
-}
-
-// Update and render bonus texts
-function updateBonusTexts(deltaTime) {
-    for (let i = bonusTexts.length - 1; i >= 0; i--) {
-        const bonus = bonusTexts[i];
-        bonus.y -= 30 * deltaTime; // Float upward
-        bonus.life -= deltaTime;
-        
-        if (bonus.life <= 0) {
-            bonusTexts.splice(i, 1);
-        }
-    }
-}
-
-function renderBonusTexts() {
-    for (const bonus of bonusTexts) {
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, bonus.life / 2.0);
-        ctx.fillStyle = bonus.color;
-        ctx.font = `${bonus.fontSize}px PressStart2P, monospace`;
-        ctx.textAlign = 'left';
-        ctx.fillText(bonus.text, bonus.x, bonus.y);
-        ctx.restore();
-    }
-}

@@ -3,7 +3,6 @@
     src: url('assets/fonts/PressStart2P-Regular.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
-    font-display: swap; /* Improved performance */
 }
 
 * {
@@ -11,12 +10,6 @@
     padding: 0;
     box-sizing: border-box;
     font-family: 'PressStart2P', 'Arial', sans-serif;
-    -webkit-tap-highlight-color: transparent; /* Remove touch highlight */
-    -webkit-touch-callout: none; /* Disable callout */
-    -webkit-user-select: none; /* Disable text selection */
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
 }
 
 body, h1, h2, h3, p, button, .score {
@@ -35,124 +28,60 @@ body, h1, h2, h3, p, button, .score {
     --ui-bg-color: #f9b233;
     --ui-border-color: #000000;
     --ui-shadow-color: #000000;
-    
-    /* Mobile-specific variables */
-    --mobile-touch-size: 44px; /* Apple's recommended minimum touch target */
-    --mobile-margin: clamp(10px, 2.5vw, 20px);
-    --mobile-font-scale: clamp(0.6, 2vw, 1);
-    --mobile-button-scale: clamp(0.8, 2.5vw, 1.2);
 }
 
 /* Dark mode theme */
 body.dark-mode {
-    --sky-color: #0A2240;
-    --ground-color: #2A623D;
-    --dirt-color: #5E4B2B;
-    --pipe-color: #2A623D;
-    --pipe-border-color: #1A4020;
-    --text-color: #FFFFFF;
-    --ui-bg-color: #3A506B;
-    --ui-border-color: #FFFFFF;
-    --ui-shadow-color: #1A1A1A;
+    --sky-color: #0A2240; /* Dark night sky */
+    --ground-color: #2A623D; /* Darker grass */
+    --dirt-color: #5E4B2B; /* Darker dirt */
+    --pipe-color: #2A623D; /* Darker pipes */
+    --pipe-border-color: #1A4020; /* Darker pipe borders */
+    --text-color: #FFFFFF; /* White text */
+    --ui-bg-color: #3A506B; /* Dark blue UI */
+    --ui-border-color: #FFFFFF; /* White borders */
+    --ui-shadow-color: #1A1A1A; /* Darker shadows */
 }
 
-/* Mobile touch overlay for better responsiveness */
-.mobile-touch-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 999;
-    pointer-events: none;
-    background: transparent;
-    display: none; /* Hide by default to prevent any potential blocking */
-}
-
-/* Loading screen - ensure it hides properly */
-.loading-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 10000; /* Very high to be above everything during loading */
-    background: var(--sky-color);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    transition: opacity 0.5s ease;
-}
-
-.loading-screen.hidden {
-    opacity: 0;
-    pointer-events: none; /* Ensure it doesn't block touches when hidden */
-}
-
-/* Character images with mobile optimization */
 img.character-img {
     image-rendering: pixelated;
-    width: clamp(40px, 8vw, 60px);
-    height: clamp(40px, 8vw, 60px);
+    width: 48px;
+    height: 48px;
     border: 2px solid #000;
     background: transparent;
     margin-bottom: 4px;
     border-radius: 4px;
-    transition: transform 0.2s ease;
 }
 
 .character-select {
     display: flex;
-    gap: clamp(15px, 4vw, 25px);
+    gap: 20px;
     justify-content: center;
-    margin-bottom: clamp(10px, 3vw, 15px);
-    flex-wrap: wrap;
+    margin-bottom: 12px;
 }
 
 .character-btn {
     background: var(--ui-bg-color);
     border: 3px solid var(--ui-border-color);
     color: var(--text-color);
-    padding: clamp(8px, 2vw, 12px);
-    font-size: calc(var(--mobile-font-scale) * 0.8rem);
+    padding: 8px 12px;
+    font-size: 1rem;
     font-family: 'PressStart2P', 'Arial', sans-serif;
     cursor: pointer;
+    /* Remove rounded corners for 8-bit style */
     border-radius: 0;
+    /* Pixelated shadows instead of smooth ones */
     box-shadow: 2px 0 0 0 var(--ui-shadow-color), 0 2px 0 0 var(--ui-shadow-color), 2px 2px 0 0 var(--ui-shadow-color);
-    transition: transform 0.1s ease, background-color 0.2s ease;
+    transition: transform 0.05s;
     outline: none;
     image-rendering: pixelated;
-    min-width: var(--mobile-touch-size);
-    min-height: calc(var(--mobile-touch-size) + 20px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    /* Enhanced mobile touch handling */
-    touch-action: manipulation;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.character-btn:active {
-    transform: scale(0.95);
 }
 
 .character-btn.selected, .character-btn:focus {
     background: #e7471d;
     color: #fff;
     border-color: #fff;
-    transform: scale(1.05);
-}
-
-.character-name {
-    font-size: calc(var(--mobile-font-scale) * 0.7rem);
-    margin-top: 2px;
+    transform: scale(1.07);
 }
 
 button:disabled {
@@ -160,57 +89,49 @@ button:disabled {
     cursor: not-allowed;
 }
 
-/* Enhanced mobile-optimized dark mode toggle */
-.dark-mode-button, .mode-toggle {
+.dark-mode-button {
     background-color: var(--ui-bg-color);
     color: var(--text-color);
-    border: 3px solid var(--ui-border-color);
-    padding: clamp(8px, 2vw, 12px);
+    border: none;
+    padding: 10px 20px;
     margin: 10px 0;
-    font-size: calc(var(--mobile-font-scale) * 0.9rem);
+    font-size: 1rem;
     cursor: pointer;
+    /* Remove rounded corners for 8-bit style */
     border-radius: 0;
+    border: 3px solid var(--ui-border-color);
+    /* Pixelated shadows instead of smooth ones */
     box-shadow: 2px 0 0 0 var(--ui-shadow-color), 0 2px 0 0 var(--ui-shadow-color), 2px 2px 0 0 var(--ui-shadow-color);
-    transition: all 0.2s ease;
-    min-width: var(--mobile-touch-size);
-    min-height: var(--mobile-touch-size);
-}
-
-.mode-toggle.mobile-optimized {
-    position: fixed;
-    top: var(--mobile-margin);
-    right: var(--mobile-margin);
-    z-index: 100;
-    font-size: clamp(14px, 3vw, 18px);
-    padding: clamp(6px, 1.5vw, 10px);
+    transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 body {
-    background-color: var(--sky-color);
+    background-color: var(--sky-color); /* Uses theme variable */
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    height: 100vh;
     overflow: hidden;
-    transition: background-color 0.5s ease;
-    /* Prevent body scrolling on mobile */
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    overscroll-behavior: none;
+    transition: background-color 0.5s ease; /* Smooth transition for theme change */
 }
 
+/* Game container */
 .game-container {
     position: relative;
     width: 100vw;
     height: 100vh;
-    height: 100dvh; /* Dynamic viewport height */
+    margin: 0;
+    padding: 0;
+    background-color: #87CEEB;
     overflow: hidden;
-    background-color: var(--sky-color);
-    transition: background-color 0.5s ease;
-    /* Ensure no scrolling */
-    overscroll-behavior: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Mobile touch improvements */
+    touch-action: none; /* Prevents scroll/zoom gestures */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #game-canvas {
@@ -220,11 +141,6 @@ body {
     width: 100%;
     height: 100%;
     z-index: 1;
-    /* Optimize canvas for mobile */
-    image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
-    image-rendering: crisp-edges;
-    touch-action: manipulation;
 }
 
 .start-screen, .game-over {
@@ -233,116 +149,81 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    height: 100dvh; /* Use dynamic viewport height */
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(0, 0, 0, 0.7);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     color: var(--text-color);
-    z-index: 100; /* Increased from 10 to ensure it's above other elements */
-    padding: var(--mobile-margin);
+    z-index: 10;
+    padding: 20px;
     text-align: center;
     transition: color 0.5s ease;
-    /* Mobile scroll optimization */
-    overscroll-behavior: none;
-    overflow-y: auto;
-    overflow-x: hidden;
-    /* Ensure content fits within mobile viewports */
-    box-sizing: border-box;
 }
 
 .game-over {
     display: none;
-    justify-content: flex-start;
-    padding: clamp(10px, 2vh, 20px) var(--mobile-margin) clamp(20px, 4vh, 40px);
-    /* Ensure scrollable area fits properly */
-    min-height: 100%;
-    min-height: 100dvh;
-}
-
-.game-over-content {
-    width: 100%;
-    max-width: 500px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: clamp(8px, 1.5vh, 12px);
-    /* Ensure content doesn't exceed viewport */
-    flex-shrink: 1;
-    min-height: 0;
 }
 
 h1, h2 {
-    color: #e7471d;
+    color: #e7471d; /* Default color */
     text-shadow: 2px 2px 0 #000;
-    margin-bottom: clamp(15px, 3vh, 25px);
-    line-height: 1.2;
+    margin-bottom: 20px;
 }
 
-/* Enhanced mobile title styling */
+/* Special styling for the FLATTERHUND title */
 .start-screen h1 {
-    font-size: clamp(1.8rem, 6vw, 3rem);
+    font-size: 2.5rem;
     color: #FFFFFF;
     text-shadow: 4px 4px 0 #000000;
     letter-spacing: 2px;
     text-transform: uppercase;
+    /* Pixelated text effect */
     image-rendering: pixelated;
+    /* Add a subtle pixel border */
     -webkit-text-stroke: 1px #000000;
-    padding: clamp(8px, 2vw, 12px) clamp(15px, 4vw, 25px);
+    /* Pixel-perfect positioning */
+    padding: 4px 0;
+    /* Add a blocky, 8-bit style border effect */
     border: 4px solid #FFFFFF;
-    border-radius: 0;
-    background-color: rgba(0, 0, 0, 0.7);
-    margin-bottom: clamp(20px, 4vh, 35px);
-    max-width: 90vw;
-    word-wrap: break-word;
+    border-radius: 0; /* Sharp corners for 8-bit style */
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 10px 20px;
+    margin-bottom: 30px;
 }
 
 h2 {
-    font-size: clamp(1.2rem, 4vw, 2.2rem);
-    margin-bottom: clamp(10px, 2vh, 20px);
+    font-size: 2rem;
+    margin-bottom: 15px;
 }
 
-/* Mobile-optimized text elements */
-.choose-character-text, .instructions-text {
-    font-size: calc(var(--mobile-font-scale) * 1rem);
-    margin-bottom: clamp(10px, 2vh, 15px);
-    line-height: 1.4;
-}
-
-.final-score-text, .high-score-text {
-    font-size: calc(var(--mobile-font-scale) * 1.1rem);
-    margin: clamp(5px, 1vh, 8px) 0;
-}
-
-/* GTA-style WASTED effect - mobile optimized */
+/* GTA-style WASTED effect */
 .wasted-container {
     width: 100%;
-    margin-bottom: clamp(15px, 3vh, 25px);
+    margin-bottom: 20px;
     animation: fade-in 2s ease-in;
 }
 
 .wasted-text {
     font-family: 'PressStart2P', 'Arial', sans-serif;
-    font-size: clamp(1.5rem, 5vw, 3.5rem);
+    font-size: 3rem;
     color: #ff0000;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     text-shadow: 3px 3px 0 #000;
     transform: skewX(-5deg);
     animation: pulse 2s infinite;
     margin: 0;
-    padding: clamp(8px, 2vw, 12px);
-    background-color: rgba(0, 0, 0, 0.8);
-    border-radius: 0;
-    border: 2px solid #ff0000;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 0; /* 8-bit style */
 }
 
 @keyframes fade-in {
-    0% { opacity: 0; transform: scale(0.5); }
+    0% { opacity: 0; }
     20% { opacity: 0; }
-    50% { opacity: 0.5; transform: scale(1.1); }
-    100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
 
 @keyframes pulse {
@@ -351,184 +232,112 @@ h2 {
     100% { transform: skewX(-5deg) scale(1); }
 }
 
-/* Mobile-optimized leaderboard */
+/* Leaderboard Styles */
 .leaderboard-container {
-    background-color: rgba(0, 0, 0, 0.8);
-    border: 3px solid var(--ui-border-color);
-    border-radius: 0;
-    padding: clamp(10px, 2.5vw, 15px);
-    margin: clamp(10px, 2vh, 15px) 0;
-    width: 100%;
-    max-width: 400px;
+    width: 80%;
+    margin: 10px auto 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 2px solid #FFFFFF;
+    border-radius: 0; /* 8-bit style */
+    padding: 5px;
 }
 
 .leaderboard-title {
-    color: var(--text-color);
-    font-size: calc(var(--mobile-font-scale) * 1rem);
+    color: #FFFFFF;
+    font-size: 0.9rem;
     text-align: center;
-    margin-bottom: clamp(8px, 1.5vh, 12px);
+    margin-bottom: 5px;
+    text-shadow: 1px 1px 0 #000;
 }
 
 .leaderboard {
     width: 100%;
-    font-size: calc(var(--mobile-font-scale) * 0.7rem);
+    color: #FFFFFF;
 }
 
 .leaderboard-row {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: clamp(8px, 2vw, 12px);
-    padding: clamp(4px, 1vw, 6px) 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    align-items: center;
+    display: flex;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .leaderboard-row.header {
+    border-bottom: 2px solid #FFFFFF;
     font-weight: bold;
-    border-bottom: 2px solid var(--ui-border-color);
-    color: var(--text-color);
+    font-size: 0.6rem;
 }
 
 .leaderboard-row div {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 1px 2px;
+    text-align: center;
+    font-size: 0.6rem;
 }
 
 .rank {
-    width: auto;
-    text-align: center;
+    width: 20%;
 }
 
 .name {
+    width: 50%;
     text-align: left;
-    min-width: 0; /* Allow shrinking */
 }
 
 .score {
+    width: 30%;
     text-align: right;
-    width: auto;
 }
 
+/* New High Score Form */
 .hidden {
-    display: none !important;
+    display: none;
 }
 
-/* Mobile-optimized high score form */
 #new-high-score-form {
-    background-color: rgba(0, 0, 0, 0.9);
-    border: 3px solid #FFFF00;
-    border-radius: 0;
+    margin-top: 10px;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 2px solid #FFFF00;
+    border-radius: 0; /* 8-bit style */
     color: #FFFF00;
     text-align: center;
-    width: 100%;
-    max-width: 350px;
-    margin: clamp(10px, 2vh, 15px) auto;
-    padding: clamp(12px, 3vw, 18px);
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #new-high-score-form p {
-    font-size: calc(var(--mobile-font-scale) * 0.9rem);
-    margin-bottom: clamp(8px, 1.5vh, 12px);
+    font-size: 0.8rem;
+    margin-bottom: 5px;
     animation: blink 1s infinite;
 }
 
 .input-container {
-    margin: clamp(8px, 1.5vh, 12px) 0;
+    margin: 5px 0;
 }
 
 .input-container label {
-    font-size: calc(var(--mobile-font-scale) * 0.7rem);
-    display: block;
-    margin-bottom: clamp(4px, 1vh, 6px);
+    font-size: 0.6rem;
 }
 
 #player-name {
     background-color: #000000;
     color: #FFFFFF;
     border: 2px solid #FFFFFF;
-    padding: clamp(8px, 2vw, 12px);
+    padding: 3px;
     font-family: 'PressStart2P', 'Arial', sans-serif;
-    font-size: calc(var(--mobile-font-scale) * 0.8rem);
-    width: 100%;
-    max-width: 250px;
-    margin-top: clamp(4px, 1vh, 6px);
-    border-radius: 0;
-    text-align: center;
-    /* Mobile input optimizations */
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    zoom: 1; /* Prevent zoom on iOS */
-}
-
-/* Enhanced mobile-optimized buttons */
-button, .primary-button {
-    background-color: var(--ui-bg-color);
-    color: var(--text-color);
-    border: 3px solid var(--ui-border-color);
-    padding: clamp(10px, 2.5vw, 15px) clamp(20px, 5vw, 30px);
-    margin: clamp(8px, 2vh, 12px) 0;
-    font-size: calc(var(--mobile-font-scale) * 1rem);
-    font-family: 'PressStart2P', 'Arial', sans-serif;
-    cursor: pointer;
-    border-radius: 0;
-    box-shadow: 3px 0 0 0 var(--ui-shadow-color), 0 3px 0 0 var(--ui-shadow-color), 3px 3px 0 0 var(--ui-shadow-color);
-    transition: all 0.1s ease;
-    outline: none;
-    position: relative;
-    z-index: 200; /* High z-index to ensure buttons are clickable */
-    /* Enhanced mobile touch handling */
-    touch-action: manipulation;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    /* Ensure minimum touch target size for mobile */
-    min-width: var(--mobile-touch-size);
-    min-height: var(--mobile-touch-size);
-    /* Prevent any potential blocking */
-    pointer-events: auto !important;
-    /* Mobile-specific optimizations */
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-}
-
-button:active, .primary-button:active {
-    background-color: #ff5022;
-    transform: translateY(2px);
-    border-bottom: 2px solid #000;
-    border-right: 2px solid #000;
-}
-
-button:hover, .primary-button:hover {
-    background-color: #ff5022;
+    font-size: 0.6rem;
+    width: 80%;
+    margin-top: 3px;
+    border-radius: 0; /* 8-bit style */
 }
 
 #save-score-button {
     background-color: #FFFF00;
     color: #000000;
     border: 2px solid #FFFFFF;
-    padding: clamp(8px, 2vw, 12px) clamp(12px, 3vw, 16px);
-    margin-top: clamp(8px, 1.5vh, 12px);
-    font-size: calc(var(--mobile-font-scale) * 0.8rem);
-}
-
-#save-score-button:disabled, button:disabled {
-    background-color: #666666;
-    color: #333333;
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-#player-name:disabled {
-    background-color: #333333;
-    color: #666666;
-    cursor: not-allowed;
-    opacity: 0.6;
+    padding: 3px 8px;
+    margin-top: 5px;
+    font-size: 0.6rem;
 }
 
 @keyframes blink {
@@ -538,308 +347,135 @@ button:hover, .primary-button:hover {
 }
 
 p {
-    margin-bottom: clamp(15px, 3vh, 25px);
-    font-size: calc(var(--mobile-font-scale) * 1.1rem);
-    line-height: 1.4;
+    margin-bottom: 20px;
+    font-size: 1.2rem;
 }
 
-/* Mobile-optimized score display */
+/* Button styles */
+button, .character-btn {
+    font-family: 'PressStart2P', 'Courier New', monospace;
+    background-color: #e7471d;
+    color: white;
+    border: 4px solid #fff;
+    padding: 12px 24px;
+    margin: 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: bold;
+    text-shadow: 1px 1px 0 #000;
+    box-shadow: 2px 0 0 0 #000, 0 2px 0 0 #000, 2px 2px 0 0 #000;
+    transition: all 0.1s ease;
+    /* Mobile touch target improvements */
+    min-height: 44px; /* iOS recommended minimum touch target */
+    min-width: 44px;
+    touch-action: manipulation; /* Prevents zoom on double-tap */
+    -webkit-touch-callout: none; /* Prevents callout menu on iOS */
+    -webkit-user-select: none; /* Prevents text selection */
+    user-select: none;
+}
+
+button:hover {
+    background-color: #ff5022;
+    transform: translateY(2px);
+    border-bottom: 2px solid #000;
+    border-right: 2px solid #000;
+}
+
 .score-display {
     position: absolute;
-    top: clamp(15px, 3vh, 25px);
+    top: 20px;
     left: 0;
     width: 100%;
     z-index: 5;
     display: flex;
     justify-content: center;
-    pointer-events: none;
 }
 
 .score {
     background-color: #333333;
-    padding: clamp(8px, 2vw, 12px) clamp(15px, 4vw, 25px);
+    padding: 10px 20px;
     border-radius: 0;
-    font-size: clamp(1rem, 3vw, 1.8rem);
+    font-size: 1.5rem;
     font-weight: bold;
     color: #FF6600;
     border: 2px solid #000;
     box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
     text-shadow: 2px 2px 0 #000;
     image-rendering: pixelated;
-    line-height: 1;
 }
 
-/* Mobile hints for better UX */
-.mobile-hints {
-    position: fixed;
-    bottom: var(--mobile-margin);
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    padding: clamp(6px, 1.5vw, 10px) clamp(12px, 3vw, 16px);
-    border-radius: 20px;
-    font-size: calc(var(--mobile-font-scale) * 0.75rem);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: 50; /* Lowered from 15 to be below start screen */
-    pointer-events: none;
-}
-
-.mobile-hints.show {
-    opacity: 1;
-    animation: fadeInOut 4s ease-in-out;
-}
-
-.hint-text {
-    background-color: rgba(0, 0, 0, 0.8);
-    color: #FFFFFF;
-    padding: clamp(6px, 1.5vw, 10px) clamp(12px, 3vw, 18px);
-    border: 2px solid #FFFFFF;
-    border-radius: 0;
-    font-size: calc(var(--mobile-font-scale) * 0.8rem);
-    text-align: center;
-    white-space: nowrap;
-}
-
-@keyframes fadeInOut {
-    0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
-    20% { opacity: 1; transform: translateX(-50%) translateY(0); }
-    80% { opacity: 1; transform: translateX(-50%) translateY(0); }
-    100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-}
-
-/* Performance indicator for mobile debugging */
-.performance-indicator {
-    position: fixed;
-    top: var(--mobile-margin);
-    left: var(--mobile-margin);
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 10px;
-    z-index: 50; /* Lowered from 200 to be below start screen */
-    pointer-events: none;
-    opacity: 0.7;
-    will-change: transform; /* Optimize for mobile */
-}
-
-/* Responsive design for different screen sizes */
-
-/* Portrait phones (very small) */
-@media screen and (max-width: 360px) and (orientation: portrait) {
-    :root {
-        --mobile-font-scale: clamp(0.5, 1.8vw, 0.8);
-        --mobile-button-scale: clamp(0.7, 2vw, 1);
-        --mobile-margin: clamp(8px, 2vw, 15px);
-    }
-    
-    .start-screen h1 {
-        font-size: clamp(1.4rem, 5vw, 2.2rem);
-        padding: clamp(6px, 1.5vw, 10px) clamp(10px, 3vw, 18px);
-    }
-    
-    .character-select {
-        gap: clamp(10px, 3vw, 18px);
-    }
-    
-    .leaderboard-container {
-        padding: clamp(8px, 2vw, 12px);
-        max-height: 50vh;
-        overflow-y: auto;
-    }
-    
-    .game-over-content {
-        gap: clamp(6px, 1.2vh, 10px);
-        padding: 0 clamp(5px, 1vw, 10px);
-    }
-    
-    .wasted-text {
-        font-size: clamp(1.2rem, 4.5vw, 2.5rem);
-        padding: clamp(6px, 1.5vw, 10px);
-    }
-    
-    .wasted-container {
-        margin-bottom: clamp(10px, 2vh, 15px);
-    }
-    
-    /* Compact spacing for small screens */
-    .final-score-text, .high-score-text {
-        margin: clamp(3px, 0.8vh, 5px) 0;
-        font-size: calc(var(--mobile-font-scale) * 1rem);
-    }
-    
-    button, .primary-button {
-        padding: clamp(8px, 2vw, 12px) clamp(12px, 3vw, 18px);
-        margin: clamp(6px, 1.2vh, 8px) 0;
-    }
-}
-
-/* Additional mobile viewport protection */
-@media screen and (max-height: 600px) {
-    .game-over {
-        padding-top: clamp(5px, 1vh, 10px);
-        padding-bottom: clamp(10px, 2vh, 20px);
-    }
-    
-    .game-over-content {
-        gap: clamp(5px, 1vh, 8px);
-        max-height: calc(100vh - 30px);
-        max-height: calc(100dvh - 30px);
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    .leaderboard-container {
-        max-height: 35vh;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-}
-
-/* Landscape phones */
-@media screen and (max-height: 500px) and (orientation: landscape) {
-    .start-screen, .game-over {
-        padding: clamp(5px, 1vh, 8px) var(--mobile-margin);
-        justify-content: flex-start;
-        overflow-y: auto;
-    }
-    
-    .game-over {
-        padding: clamp(5px, 1vh, 8px) var(--mobile-margin) clamp(10px, 2vh, 15px);
-    }
-    
-    .start-screen h1 {
-        font-size: clamp(1.2rem, 4vh, 2rem);
-        margin-bottom: clamp(8px, 1.5vh, 15px);
-    }
-    
-    .wasted-text {
-        font-size: clamp(1.2rem, 4vh, 2.5rem);
-        margin-bottom: clamp(5px, 1vh, 10px);
-    }
-    
-    .wasted-container {
-        margin-bottom: clamp(8px, 1.5vh, 15px);
-    }
-    
-    .game-over-content {
-        gap: clamp(4px, 0.8vh, 6px);
-        max-height: calc(100vh - 40px);
-        max-height: calc(100dvh - 40px);
-        overflow-y: auto;
-    }
-    
-    .leaderboard-container {
-        padding: clamp(6px, 1.2vh, 10px);
-        margin: clamp(4px, 0.8vh, 6px) 0;
-        max-height: 40vh;
-        overflow-y: auto;
-    }
-    
-    .leaderboard {
-        font-size: calc(var(--mobile-font-scale) * 0.6rem);
-    }
-    
-    .mobile-hints {
-        bottom: clamp(5px, 1vh, 8px);
-    }
-    
-    /* Compact button styling for landscape */
-    button, .primary-button {
-        padding: clamp(6px, 1.5vh, 10px) clamp(10px, 2.5vh, 15px);
-        margin: clamp(4px, 0.8vh, 6px) 0;
-        font-size: calc(var(--mobile-button-scale) * 0.85rem);
-    }
-    
-    .final-score-text, .high-score-text {
-        font-size: calc(var(--mobile-font-scale) * 0.9rem);
-        margin: clamp(2px, 0.5vh, 4px) 0;
-    }
-}
-
-/* Tablets in portrait */
-@media screen and (min-width: 768px) and (orientation: portrait) {
-    :root {
-        --mobile-font-scale: clamp(0.8, 1.5vw, 1.2);
-        --mobile-button-scale: clamp(1, 2vw, 1.4);
-    }
-    
+/* Responsive design for smaller screens */
+@media (max-width: 400px) {
     .game-container {
-        max-width: 768px;
-        margin: 0 auto;
-        border-left: 4px solid var(--ui-border-color);
-        border-right: 4px solid var(--ui-border-color);
+        width: 320px;
+        height: 568px;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    h2 {
+        font-size: 1.8rem;
+    }
+    
+    p {
+        font-size: 1rem;
+    }
+    
+    button {
+        font-size: 1rem;
     }
 }
 
-/* Large tablets and desktop */
-@media screen and (min-width: 1024px) {
-    :root {
-        --mobile-font-scale: 1;
-        --mobile-button-scale: 1.2;
-    }
-    
+/* For very small screens */
+@media (max-width: 320px) {
     .game-container {
-        max-width: 500px;
-        margin: 0 auto;
-        border: 4px solid var(--ui-border-color);
-    }
-    
-    body {
-        background: linear-gradient(135deg, var(--sky-color) 0%, #87CEEB 100%);
+        width: 300px;
+        height: 500px;
     }
 }
 
-/* High DPI displays */
-@media screen and (-webkit-min-device-pixel-ratio: 2), 
-       screen and (min-resolution: 192dpi) {
-    img.character-img, #game-canvas {
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: pixelated;
-    }
-}
-
-/* CRT Effects for 8-bit theme - mobile optimized */
+/* CRT Effects for 8-bit theme */
 .crt-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
-    background-size: 100% 3px;
-    z-index: 50; /* Lowered from 1000 to be below start screen */
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+    background-size: 100% 4px;
+    z-index: 1000;
     pointer-events: none;
-    opacity: 0.3; /* Reduced for mobile performance */
-    will-change: opacity; /* Optimize for animation */
+    opacity: 0.5;
 }
 
-/* Reduced CRT flicker for mobile performance */
+/* Apply a subtle flicker animation */
 @keyframes crt-flicker {
-    0% { opacity: 0.3; }
-    50% { opacity: 0.25; }
-    100% { opacity: 0.3; }
+    0% { opacity: 0.5; }
+    3% { opacity: 0.4; }
+    6% { opacity: 0.5; }
+    70% { opacity: 0.5; }
+    72% { opacity: 0.4; }
+    74% { opacity: 0.5; }
+    100% { opacity: 0.5; }
 }
 
 .crt-overlay {
-    animation: crt-flicker 15s infinite; /* Slower for better performance */
+    animation: crt-flicker 10s infinite;
 }
 
-/* Enhanced button interactions for mobile */
-.character-btn:active, button:active, .primary-button:active {
+/* Pixelated transitions for buttons */
+.character-btn:active, button:active {
     transition: all 0s;
-    transform: translateY(2px) scale(0.98);
+    transform: translateY(4px);
 }
 
-/* Pixel-perfect styling optimizations */
+/* More pixel-perfect styling */
 h1, h2 {
     text-shadow: 3px 3px 0 #000;
     position: relative;
     letter-spacing: 1px;
-    line-height: 1.2;
 }
 
 h1 {
@@ -850,246 +486,30 @@ h2 {
     color: #FF6600;
 }
 
-/* Ensure no unwanted scrolling or zooming on mobile */
-html {
-    height: 100%;
-    overflow: hidden;
-    -webkit-text-size-adjust: 100%;
-    -ms-text-size-adjust: 100%;
-}
-
-/* Optimize touch scrolling for leaderboard */
-.game-over {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-}
-
-/* Accessibility improvements for mobile */
-@media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-    
-    .crt-overlay {
-        animation: none;
-        opacity: 0.2;
-    }
-}
-
-/* Very small mobile screens - minimize fonts for better fit */
-@media screen and (max-width: 400px) or (max-height: 600px) {
-    :root {
-        --mobile-font-scale: clamp(0.4, 1.5vw, 0.7);
-        --mobile-button-scale: clamp(0.6, 2vw, 0.9);
-        --mobile-margin: clamp(6px, 1.5vw, 12px);
-    }
-    
-    /* WASTED text - much smaller for small screens */
-    .wasted-text {
-        font-size: clamp(0.9rem, 3.5vw, 1.8rem) !important;
-        padding: clamp(4px, 1vw, 8px);
-        letter-spacing: 1px;
-    }
-    
-    /* Game over screen titles and scores */
-    .final-score-text, .high-score-text {
-        font-size: clamp(0.7rem, 2.5vw, 1rem) !important;
-        margin: clamp(2px, 0.5vh, 4px) 0;
-    }
-    
-    /* Main title */
-    .start-screen h1 {
-        font-size: clamp(1rem, 4vw, 1.8rem) !important;
-        padding: clamp(4px, 1vw, 8px) clamp(8px, 2vw, 12px);
-        margin-bottom: clamp(8px, 2vh, 15px);
-    }
-    
-    /* Section headings */
-    h2 {
-        font-size: clamp(0.8rem, 3vw, 1.4rem) !important;
-        margin-bottom: clamp(6px, 1.5vh, 10px);
-    }
-    
-    /* Buttons - much smaller */
-    button, .primary-button {
-        font-size: clamp(0.6rem, 2.2vw, 0.9rem) !important;
-        padding: clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px);
-        margin: clamp(4px, 1vh, 6px) 0;
-        min-height: clamp(35px, 8vw, 40px);
-    }
-    
-    /* Leaderboard */
-    .leaderboard-title {
-        font-size: clamp(0.6rem, 2vw, 0.9rem) !important;
-        margin-bottom: clamp(4px, 1vh, 8px);
-    }
-    
-    .leaderboard {
-        font-size: clamp(0.5rem, 1.8vw, 0.7rem) !important;
-    }
-    
-    .leaderboard-container {
-        padding: clamp(6px, 1.5vw, 10px);
-        margin: clamp(6px, 1.5vh, 10px) 0;
-        max-height: 40vh;
-    }
-    
-    /* Instructions and helper text */
-    .choose-character-text, .instructions-text {
-        font-size: clamp(0.6rem, 2vw, 0.8rem) !important;
-        margin-bottom: clamp(6px, 1.5vh, 10px);
-    }
-    
-    /* Mobile hints */
-    .hint-text {
-        font-size: clamp(0.5rem, 1.8vw, 0.7rem) !important;
-        padding: clamp(4px, 1vw, 6px) clamp(8px, 2vw, 12px);
-    }
-    
-    /* High score form */
-    #new-high-score-form {
-        padding: clamp(8px, 2vw, 12px);
-        margin: clamp(6px, 1.5vh, 10px) auto;
-    }
-    
-    #new-high-score-form p {
-        font-size: clamp(0.6rem, 2vw, 0.8rem) !important;
-        margin-bottom: clamp(4px, 1vh, 6px);
-    }
-    
-    .input-container label {
-        font-size: clamp(0.5rem, 1.8vw, 0.7rem) !important;
-        margin-bottom: clamp(2px, 0.5vh, 4px);
-    }
-    
-    #player-name {
-        font-size: clamp(0.6rem, 2vw, 0.8rem) !important;
-        padding: clamp(6px, 1.5vw, 8px);
-    }
-    
-    #save-score-button {
-        font-size: clamp(0.6rem, 2vw, 0.8rem) !important;
-        padding: clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 12px);
-    }
-    
-    /* Character selection */
-    .character-btn {
-        font-size: clamp(0.5rem, 1.8vw, 0.7rem) !important;
-        padding: clamp(6px, 1.5vw, 8px);
-        min-height: clamp(50px, 12vw, 60px);
-    }
-    
-    .character-name {
-        font-size: clamp(0.5rem, 1.5vw, 0.6rem) !important;
-    }
-    
-    /* Game over content spacing */
-    .game-over-content {
-        gap: clamp(4px, 1vh, 6px);
-        padding: 0 clamp(4px, 1vw, 8px);
-    }
-    
-    .wasted-container {
-        margin-bottom: clamp(6px, 1.5vh, 10px);
-    }
-}
-
-/* Extra small mobile screens - ultra-compact fonts */
-@media screen and (max-width: 320px) or (max-height: 500px) {
-    :root {
-        --mobile-font-scale: clamp(0.3, 1.2vw, 0.6);
-        --mobile-button-scale: clamp(0.5, 1.8vw, 0.8);
-        --mobile-margin: clamp(4px, 1vw, 8px);
-    }
-    
-    /* WASTED text - ultra compact */
-    .wasted-text {
-        font-size: clamp(0.7rem, 3vw, 1.4rem) !important;
-        padding: clamp(2px, 0.8vw, 6px);
-        letter-spacing: 0.5px;
-    }
-    
-    /* Scores - ultra small */
-    .final-score-text, .high-score-text {
-        font-size: clamp(0.6rem, 2vw, 0.8rem) !important;
-        margin: clamp(1px, 0.3vh, 3px) 0;
-    }
-    
-    /* Main title - ultra compact */
-    .start-screen h1 {
-        font-size: clamp(0.8rem, 3.5vw, 1.4rem) !important;
-        padding: clamp(3px, 0.8vw, 6px) clamp(6px, 1.5vw, 10px);
-        margin-bottom: clamp(6px, 1.5vh, 10px);
-    }
-    
-    /* Buttons - ultra small but still touchable */
-    button, .primary-button {
-        font-size: clamp(0.5rem, 1.8vw, 0.7rem) !important;
-        padding: clamp(4px, 1vw, 8px) clamp(6px, 1.5vw, 10px);
-        margin: clamp(2px, 0.8vh, 4px) 0;
-        min-height: clamp(32px, 7vw, 36px);
-    }
-    
-    /* Leaderboard - ultra compact */
-    .leaderboard-title {
-        font-size: clamp(0.5rem, 1.8vw, 0.7rem) !important;
-        margin-bottom: clamp(2px, 0.8vh, 4px);
-    }
-    
-    .leaderboard {
-        font-size: clamp(0.4rem, 1.5vw, 0.6rem) !important;
-    }
-    
-    .leaderboard-container {
-        padding: clamp(4px, 1vw, 8px);
-        margin: clamp(4px, 1vh, 6px) 0;
-        max-height: 35vh;
-    }
-    
-    /* Ultra compact spacing */
-    .game-over-content {
-        gap: clamp(2px, 0.8vh, 4px);
-        padding: 0 clamp(2px, 0.8vw, 6px);
-    }
-    
-    .wasted-container {
-        margin-bottom: clamp(4px, 1vh, 6px);
-    }
-    
-    /* Character buttons - ultra small */
-    .character-btn {
-        font-size: clamp(0.4rem, 1.5vw, 0.6rem) !important;
-        padding: clamp(4px, 1vw, 6px);
-        min-height: clamp(40px, 10vw, 50px);
-    }
-    
-    .character-name {
-        font-size: clamp(0.4rem, 1.2vw, 0.5rem) !important;
-    }
-}
-
-/* Start button specific styling for better mobile visibility */
+/* Start button specific styles for mobile */
 #start-button {
-    background-color: #e7471d !important;
-    color: white !important;
-    border: 3px solid #000 !important;
-    font-weight: bold;
-    z-index: 300 !important; /* Even higher z-index for start button */
-    /* Make it more prominent on mobile */
-    transform: scale(1.05);
-    box-shadow: 4px 0 0 0 #000, 0 4px 0 0 #000, 4px 4px 0 0 #000 !important;
+    font-size: 1.4rem;
+    padding: 16px 32px;
+    min-height: 60px; /* Larger touch target for start button */
+    background-color: #28a745; /* Green color to indicate start action */
+    animation: pulse-start 2s infinite; /* Draw attention to start button */
 }
 
-#start-button:not(:disabled):hover,
-#start-button:not(:disabled):focus {
-    background-color: #ff5722 !important;
-    transform: scale(1.1);
+#start-button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    animation: none;
 }
 
-#start-button:not(:disabled):active {
-    transform: scale(1.02);
-    box-shadow: 2px 0 0 0 #000, 0 2px 0 0 #000, 2px 2px 0 0 #000 !important;
+@keyframes pulse-start {
+    0% { 
+        box-shadow: 2px 0 0 0 #000, 0 2px 0 0 #000, 2px 2px 0 0 #000;
+    }
+    50% { 
+        box-shadow: 3px 0 0 0 #000, 0 3px 0 0 #000, 3px 3px 0 0 #000;
+        transform: translateY(-1px);
+    }
+    100% { 
+        box-shadow: 2px 0 0 0 #000, 0 2px 0 0 #000, 2px 2px 0 0 #000;
+    }
 }
-
