@@ -91,6 +91,7 @@ let gameOverSoundContext;
 
 // DOM elements
 let startScreen, gameOverScreen, scoreDisplay, finalScoreDisplay, highScoreDisplay;
+let newHighScoreSplash, splashScoreElement; // Add splash screen elements
 // Game DOM elements
 
 // Dark mode support
@@ -106,6 +107,10 @@ function init() {
     scoreDisplay = document.getElementById('score');
     finalScoreDisplay = document.getElementById('final-score');
     highScoreDisplay = document.getElementById('high-score');
+    
+    // Get splash screen elements
+    newHighScoreSplash = document.getElementById('new-high-score-splash');
+    splashScoreElement = document.getElementById('splash-score');
     
     // Game initialization
     
@@ -811,6 +816,37 @@ function checkCollision(rect1, rect2) {
 async function gameEnd() {
     gameOver = true;
     
+    // Check for new high score BEFORE any effects
+    const isNewHighScore = score > highScore;
+    
+    if (isNewHighScore) {
+        // NEW HIGH SCORE! Show the splash screen first
+        console.log('🎉 NEW HIGH SCORE DETECTED!', score, 'vs previous', highScore);
+        
+        // Update high score immediately
+        highScore = score;
+        
+        // Show the splash screen
+        showNewHighScoreSplash(score);
+        
+        // Play special high score sound
+        if (window.eightBitAudio) {
+            window.eightBitAudio.playHighScoreSound();
+        }
+        
+        // Wait for splash screen to finish, then continue with normal game over
+        setTimeout(() => {
+            continueGameEnd();
+        }, 3000); // Show splash for 3 seconds
+        
+    } else {
+        // No new high score, proceed with normal game over immediately
+        continueGameEnd();
+    }
+}
+
+// Continue with the normal game over sequence
+function continueGameEnd() {
     // Apply GTA-style effects
     applyWastedEffect();
     
@@ -861,6 +897,28 @@ async function gameEnd() {
     
     // Show game over screen immediately but keep the slow reveal animation
     gameOverScreen.style.display = 'flex';
+}
+
+// Show the NEW HIGH SCORE splash screen
+function showNewHighScoreSplash(newScore) {
+    if (newHighScoreSplash && splashScoreElement) {
+        // Update the score display
+        splashScoreElement.textContent = newScore;
+        
+        // Show the splash screen with animation
+        newHighScoreSplash.classList.add('show');
+        newHighScoreSplash.style.display = 'flex';
+        
+        console.log('✨ NEW HIGH SCORE splash screen displayed!');
+        
+        // Auto-hide after animation completes
+        setTimeout(() => {
+            newHighScoreSplash.classList.remove('show');
+            newHighScoreSplash.style.display = 'none';
+        }, 3000);
+    } else {
+        console.warn('⚠️ Splash screen elements not found');
+    }
 }
 // Update score display
 function updateScore() {

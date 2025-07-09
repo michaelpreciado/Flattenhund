@@ -121,6 +121,43 @@ function playBoostSound() {
     return sounds;
 }
 
+function playHighScoreSound() {
+    const sounds = [];
+    let delay = 0;
+    
+    // Triumphant ascending fanfare
+    const fanfareNotes = [
+        { freq: 523.25, duration: 0.15, volume: 0.15 }, // C5
+        { freq: 659.25, duration: 0.15, volume: 0.16 }, // E5
+        { freq: 783.99, duration: 0.15, volume: 0.17 }, // G5
+        { freq: 1046.50, duration: 0.3, volume: 0.18 }, // C6 - hold longer
+        // Quick celebration trill
+        { freq: 880.00, duration: 0.08, volume: 0.12 }, // A5
+        { freq: 987.77, duration: 0.08, volume: 0.12 }, // B5
+        { freq: 1046.50, duration: 0.08, volume: 0.12 }, // C6
+        { freq: 1174.66, duration: 0.08, volume: 0.12 }, // D6
+        { freq: 1318.51, duration: 0.2, volume: 0.15 }, // E6 - finale
+    ];
+    
+    fanfareNotes.forEach(note => {
+        setTimeout(() => {
+            sounds.push(playNote(note.freq, note.duration, 'square', note.volume));
+        }, delay);
+        delay += note.duration * 800; // Slightly overlapping for fullness
+    });
+    
+    // Add some harmonic background for richness
+    setTimeout(() => {
+        sounds.push(playNote(523.25, 1.0, 'triangle', 0.06)); // Background C5
+    }, 200);
+    
+    setTimeout(() => {
+        sounds.push(playNote(783.99, 0.8, 'triangle', 0.05)); // Background G5
+    }, 400);
+    
+    return sounds;
+}
+
 // Export sound functions
 window.eightBitAudio = {
     init: initAudio,
@@ -130,6 +167,7 @@ window.eightBitAudio = {
     playHitSound: playHitSound,
     playGameOverSound: playGameOverSound,
     playBoostSound: playBoostSound,
+    playHighScoreSound: playHighScoreSound, // Add the new high score sound
     // Add aliases that the game code expects
     playFlap: playJumpSound,  // Alias for flap sound
     playHit: playHitSound,    // Alias for hit sound  
