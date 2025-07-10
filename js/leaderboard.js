@@ -1,6 +1,143 @@
 // Leaderboard system for Flappy 8-Bit
 // Handles high score tracking and display with persistent player nicknames
 
+// PROFANITY FILTER SYSTEM
+// Comprehensive filter to prevent slurs and inappropriate language on leaderboard
+
+// List of prohibited words and variations (comprehensive but not exhaustive)
+const PROHIBITED_WORDS = [
+    // Racial slurs
+    'nigger', 'nigga', 'n1gger', 'n1gga', 'nig', 'negro', 'coon', 'chink', 'gook', 'spic', 'wetback',
+    'beaner', 'towelhead', 'raghead', 'kyke', 'kike', 'wop', 'guinea', 'gringo', 'honky', 'cracker',
+    'whitey', 'slant', 'jap', 'nip', 'slope', 'coolie', 'paki', 'brownie', 'redskin', 'injun',
+    
+    // Religious slurs
+    'kike', 'hymie', 'sheeney', 'yid', 'christ-killer', 'bible-thumper', 'holy-roller', 'jesus-freak',
+    'sand-nigger', 'camel-jockey', 'towel-head', 'curry-muncher', 'dot-head', 'haji', 'muzzie',
+    
+    // Homophobic slurs
+    'faggot', 'fag', 'dyke', 'queer', 'homo', 'fairy', 'sissy', 'tranny', 'shemale', 'ladyboy',
+    'f4ggot', 'f4g', 'f@ggot', 'f@g', 'fagot', 'faget', 'fagg0t', 'f4g0t',
+    
+    // Sexist slurs
+    'bitch', 'slut', 'whore', 'cunt', 'twat', 'skank', 'hoe', 'thot', 'b1tch', 'b!tch',
+    'wh0re', 'wh@re', 'sl^t', 'c^nt', 'c*nt', 'c@nt', 'cu*t', 'cu@t',
+    
+    // Ableist slurs
+    'retard', 'retarded', 'mongoloid', 'spastic', 'tard', 'r3tard', 'r3tarded', 'ret@rd',
+    'r*tard', 'r@tard', 'gimp', 'cripple', 'midget', 'dwarf', 'freak', 'psycho',
+    
+    // General offensive terms
+    'nazi', 'hitler', 'genocide', 'rapist', 'pedophile', 'terrorist', 'killer', 'murder',
+    'suicide', 'kys', 'kill-yourself', 'die', 'death', 'terrorist', 'bomb', 'attack',
+    
+    // Common substitutions and variations
+    'n-word', 'n_word', 'nword', 'f-word', 'f_word', 'fword', 'c-word', 'c_word', 'cword',
+    'b-word', 'b_word', 'bword', 'r-word', 'r_word', 'rword', 's-word', 's_word', 'sword',
+    
+    // Leetspeak variations
+    '4ssh0le', '4sshole', '@sshole', '@ssh0le', 'a$$hole', 'a$$h0le', 'a55hole', 'a55h0le',
+    'ba5tard', 'ba$tard', 'b@stard', 'b4stard', 'damn1t', 'd@mn1t', 'd4mn1t', 'd@mn',
+    'sh1t', 'sh!t', 'sh@t', '$h1t', '$h!t', '$h@t', 'fu(k', 'fuk', 'f*ck', 'f@ck',
+    'f^ck', 'f#ck', 'f!ck', 'fvck', 'phuck', 'phuq', 'phuk', 'fukc', 'fcuk', 'fuc',
+    
+    // Additional offensive terms
+    'ass', 'asshole', 'bastard', 'damn', 'hell', 'piss', 'shit', 'fuck', 'goddamn',
+    'motherfucker', 'cocksucker', 'dickhead', 'penis', 'vagina', 'pussy', 'cock', 'dick',
+    'tits', 'boobs', 'sex', 'porn', 'xxx', 'anal', 'oral', 'blowjob', 'handjob',
+    
+    // Hate symbols and codes
+    '1488', '88', '14', 'hh', 'wp', 'kkk', 'white-power', 'white-pride', 'blood-honor',
+    'rahowa', 'zog', 'mud-shark', 'coal-burner', 'gas-chamber', 'oven-dodger', 'lampshade',
+    
+    // Internet slang offensive terms
+    'normie', 'chad', 'beta', 'alpha', 'simp', 'cuck', 'incel', 'femoid', 'roastie',
+    'stacy', 'becky', 'karen', 'boomer', 'zoomer', 'coomer', 'doomer', 'bloomer'
+];
+
+// Function to check if a name contains prohibited words
+function containsProfanity(text) {
+    if (!text || typeof text !== 'string') return false;
+    
+    const normalizedText = text.toLowerCase()
+        .replace(/[^a-z0-9]/g, '') // Remove special characters
+        .replace(/0/g, 'o')        // Replace 0 with o
+        .replace(/1/g, 'i')        // Replace 1 with i
+        .replace(/3/g, 'e')        // Replace 3 with e
+        .replace(/4/g, 'a')        // Replace 4 with a
+        .replace(/5/g, 's')        // Replace 5 with s
+        .replace(/7/g, 't')        // Replace 7 with t
+        .replace(/8/g, 'b');       // Replace 8 with b
+    
+    // Check exact matches and partial matches
+    for (const word of PROHIBITED_WORDS) {
+        if (normalizedText.includes(word.toLowerCase())) {
+            return true;
+        }
+    }
+    
+    // Additional pattern checks for common evasion techniques
+    const patterns = [
+        /n[^a-z]*[i1][^a-z]*[g9][^a-z]*[g9][^a-z]*[e3a@][^a-z]*r/i,  // n-word variations
+        /f[^a-z]*[a@4][^a-z]*[g9][^a-z]*[g9][^a-z]*[o0][^a-z]*[t7]/i,  // f-word variations
+        /c[^a-z]*[u^][^a-z]*[n][^a-z]*[t7]/i,                          // c-word variations
+        /b[^a-z]*[i1][^a-z]*[t7][^a-z]*[c][^a-z]*[h]/i,                // b-word variations
+        /r[^a-z]*[e3][^a-z]*[t7][^a-z]*[a@4][^a-z]*r[^a-z]*d/i,        // r-word variations
+        /k[^a-z]*[i1][^a-z]*[k][^a-z]*[e3]/i,                          // k-word variations
+        /s[^a-z]*[l1][^a-z]*[u^][^a-z]*[t7]/i,                         // s-word variations
+        /w[^a-z]*[h][^a-z]*[o0][^a-z]*r[^a-z]*[e3]/i,                  // w-word variations
+        /h[^a-z]*[i1][^a-z]*[t7][^a-z]*[l1][^a-z]*[e3][^a-z]*r/i       // h-word variations
+    ];
+    
+    for (const pattern of patterns) {
+        if (pattern.test(normalizedText)) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// Function to filter and sanitize player names
+function sanitizePlayerName(name) {
+    if (!name || typeof name !== 'string') {
+        return 'PLAYER';
+    }
+    
+    // Clean and normalize the name
+    const cleanName = name.trim().toUpperCase();
+    
+    // Check for profanity
+    if (containsProfanity(cleanName)) {
+        console.warn('🚫 Profanity detected in name:', name);
+        
+        // Return a safe alternative
+        const safeAlternatives = [
+            'PLAYER', 'GAMER', 'BIRD', 'FLYER', 'PILOT', 'HERO', 'STAR', 'CHAMP',
+            'EAGLE', 'FALCON', 'PHOENIX', 'SWIFT', 'DASH', 'ZOOM', 'TURBO', 'SPEED',
+            'BRAVE', 'BOLD', 'QUICK', 'FLASH', 'ROCKET', 'COMET', 'STORM', 'WIND'
+        ];
+        
+        // Use a random safe alternative
+        const randomIndex = Math.floor(Math.random() * safeAlternatives.length);
+        const safeName = safeAlternatives[randomIndex];
+        
+        console.log('🛡️ Replaced with safe name:', safeName);
+        return safeName;
+    }
+    
+    // Additional safety checks
+    if (cleanName.length === 0) {
+        return 'PLAYER';
+    }
+    
+    if (cleanName.length > 12) {
+        return cleanName.substring(0, 12);
+    }
+    
+    return cleanName;
+}
+
 // Player data management for persistent nicknames and highest scores
 const PLAYER_DATA_KEY = 'flattenhundPlayerData';
 
@@ -10,6 +147,10 @@ function getPlayerData() {
         const data = localStorage.getItem(PLAYER_DATA_KEY);
         if (data) {
             const parsed = JSON.parse(data);
+            // Sanitize the nickname when retrieving from storage
+            if (parsed.nickname) {
+                parsed.nickname = sanitizePlayerName(parsed.nickname);
+            }
             console.log('📱 Retrieved player data:', parsed);
             return parsed;
         }
@@ -70,7 +211,7 @@ function hasStoredNickname() {
 // Set player nickname (first time setup)
 function setPlayerNickname(nickname) {
     const playerData = getPlayerData();
-    playerData.nickname = nickname.trim().toUpperCase();
+    playerData.nickname = sanitizePlayerName(nickname);
     savePlayerData(playerData);
     console.log('👤 Player nickname set:', playerData.nickname);
     return playerData.nickname;
@@ -79,7 +220,7 @@ function setPlayerNickname(nickname) {
 // Get player's stored nickname
 function getPlayerNickname() {
     const playerData = getPlayerData();
-    return playerData.nickname || 'PLAYER';
+    return sanitizePlayerName(playerData.nickname) || 'PLAYER';
 }
 
 // Dummy leaderboard data has been removed to prioritize Supabase.
@@ -179,6 +320,66 @@ async function initLeaderboard() {
         // Clear input when it gets focus
         playerNameInput.addEventListener('focus', function() {
             this.select(); // Select all text when focused
+        });
+        
+        // Add real-time profanity check and feedback
+        playerNameInput.addEventListener('input', function() {
+            const inputValue = this.value.trim();
+            const originalValue = inputValue;
+            
+            if (inputValue.length > 0) {
+                // Check for profanity in real-time
+                if (containsProfanity(inputValue)) {
+                    // Visual feedback for inappropriate content
+                    this.style.borderColor = '#ff6b6b';
+                    this.style.backgroundColor = 'rgba(255, 107, 107, 0.1)';
+                    this.title = 'Inappropriate language detected. Please choose a different name.';
+                    
+                    // Disable save button
+                    if (saveScoreButton) {
+                        saveScoreButton.disabled = true;
+                        saveScoreButton.textContent = 'INAPPROPRIATE NAME';
+                        saveScoreButton.style.opacity = '0.5';
+                    }
+                    
+                    // Show warning message
+                    if (window.showMobileHint) {
+                        window.showMobileHint('⚠️ Please choose an appropriate nickname', 2000);
+                    }
+                } else {
+                    // Reset styling for appropriate content
+                    this.style.borderColor = '';
+                    this.style.backgroundColor = '';
+                    this.title = '';
+                    
+                    // Re-enable save button
+                    if (saveScoreButton) {
+                        saveScoreButton.disabled = false;
+                        saveScoreButton.textContent = 'SAVE SCORE';
+                        saveScoreButton.style.opacity = '1';
+                    }
+                }
+                
+                // Limit length to 12 characters
+                if (inputValue.length > 12) {
+                    this.value = inputValue.substring(0, 12);
+                    if (window.showMobileHint) {
+                        window.showMobileHint('📝 Maximum 12 characters', 1500);
+                    }
+                }
+            } else {
+                // Reset styling for empty input
+                this.style.borderColor = '';
+                this.style.backgroundColor = '';
+                this.title = '';
+                
+                // Re-enable save button for empty input (will use default 'PLAYER')
+                if (saveScoreButton) {
+                    saveScoreButton.disabled = false;
+                    saveScoreButton.textContent = 'SAVE SCORE';
+                    saveScoreButton.style.opacity = '1';
+                }
+            }
         });
     }
     
@@ -320,7 +521,7 @@ function actuallyRenderLeaderboard() {
             
             const nameDiv = document.createElement('div');
             nameDiv.className = 'name';
-            nameDiv.textContent = entry.name || 'ANONYMOUS';
+            nameDiv.textContent = sanitizePlayerName(entry.name) || 'ANONYMOUS';
             
             const scoreDiv = document.createElement('div');
             scoreDiv.className = 'score';
@@ -384,8 +585,10 @@ function checkAndPromptForPersonalBest(currentScore) {
         if (leaderboard && Array.isArray(leaderboard)) {
             console.log('📋 Leaderboard is valid array with', leaderboard.length, 'entries');
             if (leaderboard.length < 10) {
-                qualifiesForLeaderboard = scoreToCheck > 0;
-                console.log('📋 Leaderboard has < 10 entries, any score > 0 qualifies. Result:', qualifiesForLeaderboard);
+                // Only qualify if the score is actually decent (not just any score > 0)
+                const minimumScore = Math.max(10, leaderboard.length > 0 ? Math.min(...leaderboard.map(entry => entry.score || 0)) : 10);
+                qualifiesForLeaderboard = scoreToCheck >= minimumScore;
+                console.log('📋 Leaderboard has < 10 entries, minimum score needed:', minimumScore, 'Qualifies?', qualifiesForLeaderboard, `(${scoreToCheck} >= ${minimumScore})`);
             } else {
                 // Check if highest score is higher than the lowest score in top 10
                 const lowestEntry = leaderboard[leaderboard.length - 1];
@@ -395,30 +598,35 @@ function checkAndPromptForPersonalBest(currentScore) {
                     qualifiesForLeaderboard = scoreToCheck > lowestScore;
                     console.log('📋 Checking highest score against lowest leaderboard score:', lowestScore, 'Qualifies?', qualifiesForLeaderboard, `(${scoreToCheck} > ${lowestScore})`);
                 } else {
-                    console.warn('⚠️ Invalid leaderboard entry structure, defaulting to qualification');
-                    qualifiesForLeaderboard = scoreToCheck > 0;
+                    console.warn('⚠️ Invalid leaderboard entry structure, using minimum score of 10');
+                    qualifiesForLeaderboard = scoreToCheck >= 10;
                 }
             }
         } else {
-            console.log('📋 No valid leaderboard data (null/undefined/not array), any score > 0 qualifies');
-            qualifiesForLeaderboard = scoreToCheck > 0;
+            console.log('📋 No valid leaderboard data (null/undefined/not array), using minimum score of 10');
+            qualifiesForLeaderboard = scoreToCheck >= 10;
         }
 
         console.log('🎖️ === QUALIFICATION RESULTS ===');
         console.log('🎖️ New Personal Best:', isNewPersonalBest);
         console.log('🎖️ Leaderboard Qualification:', qualifiesForLeaderboard);
         console.log('🎖️ Has Stored Nickname:', hasStoredNickname());
-        console.log('🎖️ Overall Qualification:', (isNewPersonalBest || qualifiesForLeaderboard));
+        console.log('🎖️ Show Form Criteria: New Personal Best AND Qualifies AND No Stored Nickname');
+        console.log('🎖️ Show Form Result:', (!hasStoredNickname() && isNewPersonalBest && qualifiesForLeaderboard));
 
         // Check if they already have a nickname stored
-        if (hasStoredNickname() && qualifiesForLeaderboard) {
-            // Auto-save for returning players with stored nickname
+        if (hasStoredNickname() && (isNewPersonalBest || qualifiesForLeaderboard)) {
+            // Auto-save for returning players with stored nickname, but only if they have a new personal best
             console.log('👤 Returning player with stored nickname - auto-saving highest score...');
             const nickname = getPlayerNickname();
             
-            // Show success message
+            // Show success message only if it's a new personal best
             if (window.showMobileHint) {
-                window.showMobileHint(`Score updated for ${nickname}! High Score: ${playerData.highestScore}`, 3000);
+                if (isNewPersonalBest) {
+                    window.showMobileHint(`New personal best for ${nickname}! Score: ${playerData.highestScore}`, 3000);
+                } else {
+                    window.showMobileHint(`Score saved for ${nickname}! High Score: ${playerData.highestScore}`, 2000);
+                }
             }
             
             // Auto-save their highest score to leaderboard
@@ -431,10 +639,11 @@ function checkAndPromptForPersonalBest(currentScore) {
         }
         
         // First-time players or players without stored nickname
-        if (!hasStoredNickname() && qualifiesForLeaderboard) {
+        // Only show form if it's a new personal best AND they qualify for leaderboard
+        if (!hasStoredNickname() && isNewPersonalBest && qualifiesForLeaderboard) {
             let message = '';
             if (isNewPersonalBest && qualifiesForLeaderboard) {
-                message = 'GREAT SCORE! ENTER YOUR NICKNAME:';
+                message = 'NEW PERSONAL BEST! ENTER YOUR NICKNAME:';
             } else if (qualifiesForLeaderboard) {
                 message = 'YOU MADE THE LEADERBOARD! ENTER YOUR NICKNAME:';
             }
@@ -490,7 +699,8 @@ function checkAndPromptForPersonalBest(currentScore) {
             console.log('🎯 === HIGH SCORE CHECK END (SHOW FORM) ===');
             return true; // Show form for first-time players
         } else {
-            console.log(`ℹ️ No action needed: Highest Score: ${playerData.highestScore}, Qualifies: ${qualifiesForLeaderboard}, Has Nickname: ${hasStoredNickname()}`);
+            console.log(`ℹ️ No action needed: New Personal Best: ${isNewPersonalBest}, Highest Score: ${playerData.highestScore}, Qualifies: ${qualifiesForLeaderboard}, Has Nickname: ${hasStoredNickname()}`);
+            console.log('ℹ️ Form criteria: Must be new personal best AND qualify for leaderboard AND not have stored nickname');
             if (newHighScoreForm) {
                 newHighScoreForm.classList.add('hidden');
             }
@@ -513,8 +723,9 @@ function checkAndPromptForPersonalBest(currentScore) {
 // Auto-save player score for returning players (no form needed)
 async function autoSavePlayerScore(nickname, highestScore) {
     const character = window.selectedCharacter || 'taz';
+    const safeName = sanitizePlayerName(nickname);
     
-    console.log(`🤖 Auto-saving score for returning player: ${nickname} - ${highestScore} (${character})`);
+    console.log(`🤖 Auto-saving score for returning player: ${safeName} - ${highestScore} (${character})`);
     
     try {
         // Check if Supabase is available
@@ -523,7 +734,7 @@ async function autoSavePlayerScore(nickname, highestScore) {
             return false;
         }
         
-        const saveResult = await window.supabaseHelpers.saveScore(nickname, highestScore, character);
+        const saveResult = await window.supabaseHelpers.saveScore(safeName, highestScore, character);
         
         if (saveResult) {
             console.log("✅ Auto-save successful for returning player");
@@ -557,7 +768,7 @@ async function autoSavePlayerScore(nickname, highestScore) {
 
 // Save high score for first-time players (with nickname form)
 async function saveHighScore() {
-    const playerName = playerNameInput.value.trim().toUpperCase() || 'PLAYER';
+    const playerName = sanitizePlayerName(playerNameInput.value) || 'PLAYER';
     const playerData = getPlayerData(); // Get current player data
     const highestScore = playerData.highestScore; // Use highest score, not current score
     const character = window.selectedCharacter || 'taz';
@@ -848,3 +1059,80 @@ window.initializeLeaderboardSystem = async function() {
         return false;
     }
 };
+
+// Test function to verify profanity filter (can be called from console)
+function testProfanityFilter() {
+    console.log('🧪 TESTING PROFANITY FILTER SYSTEM');
+    console.log('==================================');
+    
+    // Test cases
+    const testCases = [
+        // Clean names - should pass through
+        { input: 'PLAYER', expected: 'PLAYER' },
+        { input: 'john', expected: 'JOHN' },
+        { input: 'gamer123', expected: 'GAMER123' },
+        { input: 'hero', expected: 'HERO' },
+        { input: 'swift', expected: 'SWIFT' },
+        
+        // Profanity - should be replaced
+        { input: 'badword', expected: 'safe alternative' },
+        { input: 'test123', expected: 'TEST123' },
+        { input: '', expected: 'PLAYER' },
+        { input: null, expected: 'PLAYER' },
+        { input: undefined, expected: 'PLAYER' },
+        
+        // Length test
+        { input: 'verylongusername', expected: 'VERYLONGUSE' }, // should be truncated to 12 chars
+        
+        // Mixed cases
+        { input: '  player  ', expected: 'PLAYER' },
+        { input: 'Player123', expected: 'PLAYER123' }
+    ];
+    
+    let passed = 0;
+    let failed = 0;
+    
+    testCases.forEach((testCase, index) => {
+        const result = sanitizePlayerName(testCase.input);
+        const isValid = result && result.length <= 12 && !containsProfanity(result);
+        
+        if (testCase.expected === 'safe alternative') {
+            // For profanity cases, just check that it was sanitized
+            if (isValid && result !== testCase.input) {
+                console.log(`✅ Test ${index + 1}: "${testCase.input}" → "${result}" (sanitized)`);
+                passed++;
+            } else {
+                console.log(`❌ Test ${index + 1}: "${testCase.input}" → "${result}" (not properly sanitized)`);
+                failed++;
+            }
+        } else {
+            if (result === testCase.expected) {
+                console.log(`✅ Test ${index + 1}: "${testCase.input}" → "${result}"`);
+                passed++;
+            } else {
+                console.log(`❌ Test ${index + 1}: "${testCase.input}" → "${result}" (expected: "${testCase.expected}")`);
+                failed++;
+            }
+        }
+    });
+    
+    console.log('\n🧪 TEST RESULTS:');
+    console.log(`✅ Passed: ${passed}`);
+    console.log(`❌ Failed: ${failed}`);
+    console.log(`📊 Success Rate: ${Math.round((passed / testCases.length) * 100)}%`);
+    
+    if (failed === 0) {
+        console.log('🎉 All tests passed! Profanity filter is working correctly.');
+    } else {
+        console.log('⚠️ Some tests failed. Check the filter implementation.');
+    }
+}
+
+// Expose test function to global scope for console access
+window.testProfanityFilter = testProfanityFilter;
+
+// Auto-run test on load if in development mode
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    console.log('🧪 Development mode detected - profanity filter test available');
+    console.log('💡 Run window.testProfanityFilter() in console to test the filter');
+}
