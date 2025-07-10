@@ -151,6 +151,23 @@ body.dark-mode button, body.dark-mode .character-btn {
     transition: background-color 0.5s ease, color 0.5s ease;
 }
 
+/* Ensure character images stay border-free in dark mode */
+body.dark-mode .character-btn img.character-img {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    /* Maintain crisp pixelated rendering in dark mode */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    /* Ensure transparency works properly in dark mode */
+    opacity: 1;
+    filter: contrast(1.1) brightness(1.1); /* Slightly brighter in dark mode */
+}
+
 body.dark-mode .mode-toggle {
     background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.06));
     border: 2px solid rgba(255, 255, 255, 0.2);
