@@ -4,15 +4,15 @@
 // Game constants: all speed/acceleration values are in units per second (pixels/sec or pixels/sec^2)
 // Target FPS for conversion baseline was 60 FPS.
 
-const GRAVITY_ACCEL = 0.3 * 60 * 60; // (0.3 px/frame^2 * 60 frames/sec * 60) = 1080 px/sec^2 (was 0.275)
-const FLAP_VELOCITY_SET = -6.0 * 60; // (-6.0 px/frame * 60 frames/sec) = -360 px/sec (velocity is set on flap)
+const GRAVITY_ACCEL = 0.25 * 60 * 60; // Reduced gravity for more floaty feel (900 px/sec^2)
+const FLAP_VELOCITY_SET = -5.5 * 60; // Slightly reduced flap strength (-330 px/sec)
 const PIPE_SPEED_PPS = 3.1 * 60;     // (3.1 px/frame * 60 frames/sec) = 186 px/sec (was 2.7)
-const FORWARD_LEAP_VEL_CHANGE_PPS = 0.8 * 60; // (0.8 px/frame * 60 frames/sec) = 48 px/sec (added to velocityX)
-const MAX_FORWARD_SPEED_PPS = 2.5 * 60;   // (2.5 px/frame * 60 frames/sec) = 150 px/sec
-const FORWARD_DRAG_FACTOR = 0.95;    // Multiplier per frame (will be scaled by deltaTime: Math.pow(FORWARD_DRAG_FACTOR, 60 * deltaTime))
+const FORWARD_LEAP_VEL_CHANGE_PPS = 0.6 * 60; // Reduced forward impulse for smoother movement (36 px/sec)
+const MAX_FORWARD_SPEED_PPS = 2.0 * 60;   // Reduced max speed for better control (120 px/sec)
+const FORWARD_DRAG_FACTOR = 0.97;    // Less drag for smoother horizontal movement
 
-const FLOAT_DURATION_SECONDS = 15 / 60; // (15 frames / 60 fps) = 0.25 seconds
-const FLOAT_GRAVITY_MULTIPLIER = 0.7; // Gravity is multiplied by this during float
+const FLOAT_DURATION_SECONDS = 18 / 60; // Slightly longer float duration (0.3 seconds)
+const FLOAT_GRAVITY_MULTIPLIER = 0.6; // Even less gravity during float for better control
 
 const PARTICLE_MIN_SPEED_X_PPS = -3 * 60; // -180 px/sec
 const PARTICLE_MAX_SPEED_X_PPS = -1 * 60; // -60 px/sec
@@ -43,7 +43,11 @@ let mario = {
     animationFrameCount: 0, // Accumulator for animation frames
     floatTimer: 0,    // Timer for floating effect (in seconds)
     smoothRotation: 0, // Smoothly interpolated rotation value
-    holdTimer: 0     // Timer for tracking how long input is held
+    targetRotation: 0, // Target rotation for smoother interpolation
+    holdTimer: 0,     // Timer for tracking how long input is held
+    bobOffset: 0,     // For idle bobbing animation
+    scaleX: 1,        // For sprite direction/animation effects
+    scaleY: 1         // For subtle animation effects
 };
 
 // Supabase session tracking
@@ -423,7 +427,11 @@ async function startGame() {
     mario.x = 80; // Reset X position
     mario.floatTimer = FLOAT_DURATION_SECONDS * 1.33; // Start with float timer active (a bit more than one flap's worth)
     mario.smoothRotation = 0; // Reset rotation
+    mario.targetRotation = 0; // Reset target rotation
     mario.animationFrameCount = 0;
+    mario.bobOffset = 0; // Reset bobbing animation
+    mario.scaleX = 1; // Reset scale
+    mario.scaleY = 1; // Reset scale
     
     // Clear pipes
     pipes = [];
@@ -444,8 +452,14 @@ function resetGame() {
     mario.velocityX = 0;
     mario.rotation = 0;
     mario.smoothRotation = 0;
+    mario.targetRotation = 0;
     mario.x = 80;
     mario.floatTimer = 0;
+    mario.bobOffset = 0;
+    mario.scaleX = 1;
+    mario.scaleY = 1;
+    mario.animationFrameCount = 0;
+    mario.holdTimer = 0;
     // Reset player properties
     
     // Reset canvas effects
@@ -477,12 +491,16 @@ function gameLoop() {
 
 // Make mario flap with floatier physics and smooth forward movement
 function flap() {
+    // Add slight anticipation animation before flap
+    mario.scaleY = 0.9; // Brief squash for anticipation
+    mario.scaleX = 1.05; // Slight stretch
+    
     // Set vertical velocity and activate float timer
     mario.velocity = FLAP_VELOCITY_SET;
     mario.isFlapping = true;
     mario.floatTimer = FLOAT_DURATION_SECONDS; // Set float timer (in seconds)
     
-    // Add forward velocity impulse
+    // Add forward velocity impulse (reduced for smoother movement)
     mario.velocityX += FORWARD_LEAP_VEL_CHANGE_PPS;
     
     // Cap maximum forward speed
@@ -493,6 +511,12 @@ function flap() {
         mario.velocityX = -MAX_FORWARD_SPEED_PPS;
     }
 
+    // Add immediate visual feedback - rotation anticipation
+    mario.targetRotation = -0.2; // Brief upward tilt for better feedback
+    
+    // Reset animation counters for responsive feel
+    mario.animationFrameCount = 0;
+    
     // Create smoke particles immediately upon flapping
     // The createSmokeTrail() call was already in update() based on mario.isFlapping, that's fine.
     
@@ -608,11 +632,23 @@ function update(deltaTime) {
     // Update character animation frame
     mario.animationFrameCount += MARIO_ANIM_FPS * deltaTime;
     
+    // Add subtle idle bobbing animation for more life
+    mario.bobOffset += deltaTime * 3; // Slow bobbing
+    if (mario.bobOffset > Math.PI * 2) mario.bobOffset -= Math.PI * 2;
+    
     if (mario.isFlapping) {
         // Create smoke particles when flapping
         createSmokeTrail();
         mario.isFlapping = false;
+        
+        // Add subtle scale effect on flap for more impact
+        mario.scaleY = 1.1;
+        mario.scaleX = 0.95;
     }
+    
+    // Smoothly return scale to normal
+    mario.scaleX = mario.scaleX * 0.9 + 1.0 * 0.1;
+    mario.scaleY = mario.scaleY * 0.9 + 1.0 * 0.1;
     
     // Apply vertical velocity to position
     mario.y += mario.velocity * deltaTime;
@@ -634,12 +670,23 @@ function update(deltaTime) {
         mario.velocityX = 0;
     }
     
-    // Visual feedback - smooth rotation based on velocity
-    const targetRotation = Math.max(-0.5, Math.min(0.5, mario.velocity / 10));
+    // Improved rotation system for more natural movement
+    const velocityFactor = Math.max(-400, Math.min(400, mario.velocity));
+    mario.targetRotation = (velocityFactor / 400) * 0.3; // More subtle rotation range
     
-    // Smoothly interpolate rotation for more fluid movement
-    mario.smoothRotation = mario.smoothRotation * 0.8 + targetRotation * 0.2;
-    mario.rotation = mario.smoothRotation;
+    // Much smoother rotation interpolation
+    const rotationSpeed = 0.15; // Faster but still smooth
+    mario.smoothRotation = mario.smoothRotation * (1 - rotationSpeed) + mario.targetRotation * rotationSpeed;
+    
+    // Clamp rotation to prevent excessive spinning
+    mario.smoothRotation = Math.max(-0.4, Math.min(0.4, mario.smoothRotation));
+    
+    // Update sprite direction based on horizontal velocity
+    if (mario.velocityX > 10) {
+        mario.scaleX = mario.scaleX * 0.95 + 1.02 * 0.05; // Face slightly forward when moving fast
+    } else if (mario.velocityX < -10) {
+        mario.scaleX = mario.scaleX * 0.95 + 0.98 * 0.05; // Face slightly backward when moving back
+    }
     
     // Check for collisions with ground
     if (mario.y + mario.height > ground.y) {
@@ -756,9 +803,34 @@ function render() {
     ctx.translate(mario.x + mario.width / 2, mario.y + mario.height / 2);
     ctx.rotate(mario.smoothRotation);
     
-    // Draw character with minimal bounce effect
-    const bounceOffset = mario.isFlapping ? Math.sin(mario.animationFrameCount * 2) * 1 : 0; // Reduced bounce
-    ctx.drawImage(charSprite, -mario.width / 2, -mario.height / 2 + bounceOffset, mario.width, mario.height);
+    // Apply scaling for more dynamic animation
+    ctx.scale(mario.scaleX, mario.scaleY);
+    
+    // Calculate combined animation effects
+    let animationOffset = 0;
+    
+    // Flap bounce effect (more responsive)
+    if (mario.isFlapping) {
+        animationOffset += Math.sin(mario.animationFrameCount * 3) * 2;
+    }
+    
+    // Subtle idle bobbing when not flapping actively
+    if (mario.velocity > -50 && mario.velocity < 50) {
+        animationOffset += Math.sin(mario.bobOffset) * 1.5;
+    }
+    
+    // Add slight vertical offset when moving fast horizontally
+    if (Math.abs(mario.velocityX) > 20) {
+        animationOffset += Math.sin(mario.animationFrameCount * 1.5) * 0.5;
+    }
+    
+    // Draw character with combined animation effects
+    ctx.drawImage(charSprite, 
+        -mario.width / 2, 
+        -mario.height / 2 + animationOffset, 
+        mario.width, 
+        mario.height
+    );
     
     ctx.restore();
     
