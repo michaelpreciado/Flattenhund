@@ -577,26 +577,26 @@ function checkAndPromptForPersonalBest(currentScore) {
         console.log('📈 Player data:', playerData);
         console.log('🏆 Is new personal best?', isNewPersonalBest, `(${currentScore} vs ${playerData.highestScore})`);
         
-        // Check if highest score qualifies for the leaderboard (top 10)
+        // Check if CURRENT score qualifies for the leaderboard (top 10)
         let qualifiesForLeaderboard = false;
-        const scoreToCheck = playerData.highestScore; // Always check their highest score
+        const scoreToCheck = currentScore; // Check the current game score, not highest score
         
         // Ensure leaderboard is valid before checking
         if (leaderboard && Array.isArray(leaderboard)) {
             console.log('📋 Leaderboard is valid array with', leaderboard.length, 'entries');
             if (leaderboard.length < 10) {
-                // Only qualify if the score is actually decent (not just any score > 0)
+                // Only qualify if the current score is actually decent (not just any score > 0)
                 const minimumScore = Math.max(10, leaderboard.length > 0 ? Math.min(...leaderboard.map(entry => entry.score || 0)) : 10);
                 qualifiesForLeaderboard = scoreToCheck >= minimumScore;
                 console.log('📋 Leaderboard has < 10 entries, minimum score needed:', minimumScore, 'Qualifies?', qualifiesForLeaderboard, `(${scoreToCheck} >= ${minimumScore})`);
             } else {
-                // Check if highest score is higher than the lowest score in top 10
+                // Check if current score is higher than the lowest score in top 10
                 const lowestEntry = leaderboard[leaderboard.length - 1];
                 console.log('📋 Lowest leaderboard entry:', lowestEntry);
                 if (lowestEntry && typeof lowestEntry.score === 'number') {
                     const lowestScore = lowestEntry.score;
                     qualifiesForLeaderboard = scoreToCheck > lowestScore;
-                    console.log('📋 Checking highest score against lowest leaderboard score:', lowestScore, 'Qualifies?', qualifiesForLeaderboard, `(${scoreToCheck} > ${lowestScore})`);
+                    console.log('📋 Checking CURRENT score against lowest leaderboard score:', lowestScore, 'Qualifies?', qualifiesForLeaderboard, `(${scoreToCheck} > ${lowestScore})`);
                 } else {
                     console.warn('⚠️ Invalid leaderboard entry structure, using minimum score of 10');
                     qualifiesForLeaderboard = scoreToCheck >= 10;
@@ -608,25 +608,22 @@ function checkAndPromptForPersonalBest(currentScore) {
         }
 
         console.log('🎖️ === QUALIFICATION RESULTS ===');
+        console.log('🎖️ Current Score:', currentScore);
         console.log('🎖️ New Personal Best:', isNewPersonalBest);
-        console.log('🎖️ Leaderboard Qualification:', qualifiesForLeaderboard);
+        console.log('🎖️ Current Score Qualifies for Leaderboard:', qualifiesForLeaderboard);
         console.log('🎖️ Has Stored Nickname:', hasStoredNickname());
-        console.log('🎖️ Show Form Criteria: New Personal Best AND Qualifies AND No Stored Nickname');
+        console.log('🎖️ Show Form Criteria: New Personal Best AND Current Score Qualifies AND No Stored Nickname');
         console.log('🎖️ Show Form Result:', (!hasStoredNickname() && isNewPersonalBest && qualifiesForLeaderboard));
 
         // Check if they already have a nickname stored
-        if (hasStoredNickname() && (isNewPersonalBest || qualifiesForLeaderboard)) {
-            // Auto-save for returning players with stored nickname, but only if they have a new personal best
-            console.log('👤 Returning player with stored nickname - auto-saving highest score...');
+        if (hasStoredNickname() && isNewPersonalBest && qualifiesForLeaderboard) {
+            // Auto-save for returning players with stored nickname when current score qualifies
+            console.log('👤 Returning player with stored nickname - auto-saving new qualifying score...');
             const nickname = getPlayerNickname();
             
-            // Show success message only if it's a new personal best
+            // Show success message for qualifying score
             if (window.showMobileHint) {
-                if (isNewPersonalBest) {
-                    window.showMobileHint(`New personal best for ${nickname}! Score: ${playerData.highestScore}`, 3000);
-                } else {
-                    window.showMobileHint(`Score saved for ${nickname}! High Score: ${playerData.highestScore}`, 2000);
-                }
+                window.showMobileHint(`Great score ${nickname}! New record: ${playerData.highestScore}`, 3000);
             }
             
             // Auto-save their highest score to leaderboard
@@ -648,7 +645,7 @@ function checkAndPromptForPersonalBest(currentScore) {
                 message = 'YOU MADE THE LEADERBOARD! ENTER YOUR NICKNAME:';
             }
             
-            console.log(`🎉 First-time player! ${message} Score: ${playerData.highestScore}`);
+            console.log(`🎉 First-time player! ${message} Current Score: ${currentScore}, New High Score: ${playerData.highestScore}`);
             
             // Check if form elements exist before trying to use them
             console.log('🔍 Checking for form elements...');
@@ -699,8 +696,8 @@ function checkAndPromptForPersonalBest(currentScore) {
             console.log('🎯 === HIGH SCORE CHECK END (SHOW FORM) ===');
             return true; // Show form for first-time players
         } else {
-            console.log(`ℹ️ No action needed: New Personal Best: ${isNewPersonalBest}, Highest Score: ${playerData.highestScore}, Qualifies: ${qualifiesForLeaderboard}, Has Nickname: ${hasStoredNickname()}`);
-            console.log('ℹ️ Form criteria: Must be new personal best AND qualify for leaderboard AND not have stored nickname');
+            console.log(`ℹ️ No action needed: Current Score: ${currentScore}, New Personal Best: ${isNewPersonalBest}, Current Score Qualifies: ${qualifiesForLeaderboard}, Has Nickname: ${hasStoredNickname()}`);
+            console.log('ℹ️ Form criteria: Must be new personal best AND current score must qualify for leaderboard AND not have stored nickname');
             if (newHighScoreForm) {
                 newHighScoreForm.classList.add('hidden');
             }
