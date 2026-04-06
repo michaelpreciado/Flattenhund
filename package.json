@@ -8,7 +8,7 @@
     "dev": "python3 -m http.server 8000"
   },
   "keywords": ["game", "javascript", "canvas", "flappy-bird", "pixel-art"],
-  "author": "Your Name",
+  "author": "Michael Preciado",
   "license": "MIT",
   "devDependencies": {},
   "dependencies": {}
