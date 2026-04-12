@@ -148,24 +148,10 @@ class MobileOptimizer {
         const canvas = document.getElementById('game-canvas');
         if (!canvas) return;
 
-        // Optimize canvas for mobile performance
-        const ctx = canvas.getContext('2d');
-        
-        // Set up high DPI rendering
-        const scale = Math.min(this.devicePixelRatio, 2); // Cap at 2x for performance
-        const rect = canvas.getBoundingClientRect();
-        
-        canvas.width = rect.width * scale;
-        canvas.height = rect.height * scale;
-        
-        ctx.scale(scale, scale);
-        canvas.style.width = rect.width + 'px';
-        canvas.style.height = rect.height + 'px';
-        
-        // Optimize rendering settings
+        // Let game.js own backing-store sizing to avoid double scaling.
+        const ctx = canvas.getContext('2d', { alpha: false });
+        canvas.style.willChange = 'transform';
         ctx.imageSmoothingEnabled = false;
-        
-        console.log(`🎨 Canvas optimized: ${canvas.width}x${canvas.height} (${scale}x scale)`);
     }
 
     handleOrientation() {

@@ -28,6 +28,7 @@ const PIPE_GAP = 170; // Reduced gap for harder gameplay (was 190)
 const GROUND_HEIGHT = 120; // Taller ground section like in Flappy Bird
 const MARIO_WIDTH = 48; // Increased character size
 const MARIO_HEIGHT = 48; // Increased character size
+const MAX_FRAME_DELTA_SECONDS = 1 / 15; // Clamp for stability after tab pauses
 
 // Game variables
 let canvas, ctx;
@@ -62,9 +63,14 @@ let score = 0;
 let highScore = 0;
 let gameStarted = false;
 let gameOver = false;
-let lastPipeSpawn = 0;
 let animationFrameId;
 let lastTime = 0;
+let pipeSpawnTimer = 0;
+let currentDpr = 1;
+let qualityLevel = 'high';
+let frameTimeSampleMs = [];
+const FRAME_SAMPLE_SIZE = 60;
+let isPointerDown = false;
 
 // 8-bit theme colors
 const COLORS_8BIT = {
@@ -120,7 +126,8 @@ function init() {
     
     // Set initial canvas dimensions and add resize listener
     resizeCanvas(); // Initial size
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('resize', resizeCanvas, { passive: true });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // For crisp pixel art rendering (will be set in resizeCanvas too)
     // ctx.imageSmoothingEnabled = false; // Moved to resizeCanvas
@@ -162,8 +169,7 @@ function init() {
             console.error('❌ Cannot add listener to null element');
             return;
         }
-        element.addEventListener('click', handler);
-        element.addEventListener('touchend', (e) => {
+        element.addEventListener('pointerup', (e) => {
             e.preventDefault();
             handler();
         });
@@ -205,10 +211,9 @@ function init() {
     // Input handlers
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    canvas.addEventListener('touchstart', handleTouchStart);
-    canvas.addEventListener('touchend', handleTouchEnd);
-    canvas.addEventListener('mousedown', handleMouseDown);
-    canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('pointerdown', handlePointerDown, { passive: false });
+    canvas.addEventListener('pointerup', handlePointerUp, { passive: false });
+    canvas.addEventListener('pointercancel', handlePointerUp, { passive: false });
     
     // Initial render
     render();
@@ -232,11 +237,17 @@ function init() {
 // Function to handle canvas resizing
 function resizeCanvas() {
     if (!canvas || !ctx) return;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    currentDpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cssWidth = window.innerWidth;
+    const cssHeight = window.innerHeight;
+    canvas.style.width = `${cssWidth}px`;
+    canvas.style.height = `${cssHeight}px`;
+    canvas.width = Math.floor(cssWidth * currentDpr);
+    canvas.height = Math.floor(cssHeight * currentDpr);
+    ctx.setTransform(currentDpr, 0, 0, currentDpr, 0, 0);
     
     // Update ground position
-    ground.y = canvas.height - GROUND_HEIGHT;
+    ground.y = cssHeight - GROUND_HEIGHT;
     
     // Ensure crisp pixel art rendering after resize
     ctx.imageSmoothingEnabled = false;
@@ -435,6 +446,9 @@ async function startGame() {
     
     // Clear pipes
     pipes = [];
+    pipeSpawnTimer = PIPE_SPAWN_INTERVAL * 0.35;
+    frameTimeSampleMs = [];
+    qualityLevel = 'high';
     
     // Start game loop
     lastTime = performance.now(); // Initialize lastTime for deltaTime calculation
@@ -442,6 +456,7 @@ async function startGame() {
         cancelAnimationFrame(animationFrameId);
     }
     
+    document.dispatchEvent(new CustomEvent('game:start'));
     gameLoop();
 }
 
@@ -478,8 +493,9 @@ function resetGame() {
 // Game loop
 function gameLoop() {
     const currentTime = performance.now();
-    const deltaTime = Math.min(0.1, (currentTime - lastTime) / 1000); // deltaTime in seconds, clamped to avoid large jumps
+    const deltaTime = Math.min(MAX_FRAME_DELTA_SECONDS, (currentTime - lastTime) / 1000);
     lastTime = currentTime;
+    trackFrameTime(deltaTime);
 
     update(deltaTime);
     render();
@@ -535,8 +551,7 @@ function flap() {
 
 // Update smoke trail particles
 function updateParticles(deltaTime) {
-    // PERFORMANCE OPTIMIZATION: Limit maximum particle count
-    const MAX_PARTICLES = 20; // Prevent particle explosion
+    const MAX_PARTICLES = qualityLevel === 'low' ? 8 : qualityLevel === 'medium' ? 14 : 20;
     
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
@@ -562,8 +577,7 @@ function updateParticles(deltaTime) {
 
 // Create smoke trail particles when character jumps
 function createSmokeTrail() {
-    // PERFORMANCE OPTIMIZATION: Reduce particle count from 5-8 to 2-3 for better performance
-    const numParticles = 2 + Math.floor(Math.random() * 2); // Now creates 2-3 particles instead of 5-8
+    const numParticles = qualityLevel === 'low' ? 1 : 2 + Math.floor(Math.random() * 2);
     
     for (let i = 0; i < numParticles; i++) {
         particles.push({
@@ -581,16 +595,11 @@ function createSmokeTrail() {
 // Render smoke trail particles
 function renderParticles() {
     if (particles.length === 0) return; // Early exit if no particles
-    
-    // PERFORMANCE OPTIMIZATION: Batch particles by similar alpha values
-    // Sort particles by alpha to minimize context state changes
-    const sortedParticles = particles.sort((a, b) => Math.floor(a.life * 10) - Math.floor(b.life * 10));
-    
+
     let currentAlpha = -1;
-    
-    for (const p of sortedParticles) {
-        // Only change alpha if it's significantly different (reduce state changes)
-        const newAlpha = Math.floor(p.life * 10) / 10; // Round to nearest 0.1
+
+    for (const p of particles) {
+        const newAlpha = Math.floor(p.life * 10) / 10;
         if (Math.abs(currentAlpha - newAlpha) > 0.05) {
             ctx.globalAlpha = newAlpha;
             currentAlpha = newAlpha;
@@ -701,10 +710,10 @@ function update(deltaTime) {
     }
     
     // Spawn pipes
-    const currentTime = Date.now();
-    if (currentTime - lastPipeSpawn > PIPE_SPAWN_INTERVAL) {
+    pipeSpawnTimer += deltaTime * 1000;
+    if (pipeSpawnTimer >= PIPE_SPAWN_INTERVAL) {
         spawnPipe();
-        lastPipeSpawn = currentTime;
+        pipeSpawnTimer = 0;
     }
     
     // Update pipes
@@ -731,6 +740,7 @@ function update(deltaTime) {
             pipe.passed = true;
             score++;
             updateScore();
+            document.dispatchEvent(new CustomEvent('game:score', { detail: { score } }));
             
             // Use 8-bit audio if available
             if (window.eightBitAudio) {
@@ -784,11 +794,12 @@ function render() {
     // Draw the ground
     drawGround();
     
-    // PERFORMANCE OPTIMIZATION: Reduce grass detail frequency
-    ctx.fillStyle = '#A2D65B';
-    for (let x = 0; x < canvas.width; x += 16) { // Changed from 8 to 16 for better performance
-        const grassHeight = 4 + (x % 32 === 0 ? 4 : 0); // Less frequent tall grass
-        ctx.fillRect(x, ground.y - grassHeight, 8, grassHeight); // Wider grass blades
+    if (qualityLevel !== 'low') {
+        ctx.fillStyle = '#A2D65B';
+        for (let x = 0; x < canvas.width; x += 16) {
+            const grassHeight = 4 + (x % 32 === 0 ? 4 : 0);
+            ctx.fillRect(x, ground.y - grassHeight, 8, grassHeight);
+        }
     }
     
     // Render smoke trail particles behind character
@@ -892,6 +903,7 @@ function checkCollision(rect1, rect2) {
 // End the game with GTA-style WASTED effect
 async function gameEnd() {
     gameOver = true;
+    document.dispatchEvent(new CustomEvent('game:over', { detail: { score } }));
     
     // Check for new high score BEFORE any effects
     const isNewHighScore = score > highScore;
@@ -1099,6 +1111,47 @@ function handleMouseDown(e) {
 function handleMouseUp(e) {
     // Reset hold timer when mouse button is released
     mario.holdTimer = 0;
+}
+
+function handlePointerDown(e) {
+    e.preventDefault();
+    if (isPointerDown) return;
+    isPointerDown = true;
+
+    if (!gameOver) {
+        if (!gameStarted) {
+            startGame();
+        } else {
+            flap();
+            mario.holdTimer = 1;
+        }
+    } else {
+        resetGame();
+    }
+}
+
+function handlePointerUp(e) {
+    e.preventDefault();
+    isPointerDown = false;
+    mario.holdTimer = 0;
+}
+
+function handleVisibilityChange() {
+    if (document.hidden) {
+        lastTime = performance.now();
+    }
+}
+
+function trackFrameTime(deltaTime) {
+    const frameMs = deltaTime * 1000;
+    frameTimeSampleMs.push(frameMs);
+    if (frameTimeSampleMs.length > FRAME_SAMPLE_SIZE) frameTimeSampleMs.shift();
+    if (frameTimeSampleMs.length < FRAME_SAMPLE_SIZE) return;
+
+    const avgFrameMs = frameTimeSampleMs.reduce((sum, value) => sum + value, 0) / frameTimeSampleMs.length;
+    if (avgFrameMs > 24) qualityLevel = 'low';
+    else if (avgFrameMs > 19) qualityLevel = 'medium';
+    else qualityLevel = 'high';
 }
 
 // Initialize the game when the page loads

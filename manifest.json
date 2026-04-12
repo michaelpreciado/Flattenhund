@@ -1,6 +1,6 @@
 {
-  "name": "FLAPPY DOG",
-  "short_name": "Flappy Dog",
+  "name": "flattenhund",
+  "short_name": "flattenhund",
   "description": "8-bit style flappy bird game with challenging physics and leaderboards",
   "start_url": "./index.html",
   "display": "fullscreen",
@@ -61,7 +61,7 @@
     "preferred_width": 400
   },
   "scope": "./",
-      "id": "flappy-dog-game",
+      "id": "flattenhund-game",
   "launch_handler": {
     "client_mode": "focus-existing"
   },
@@ -71,7 +71,7 @@
     {
       "name": "Play Game",
       "short_name": "Play",
-      "description": "Start playing Flappy Dog",
+      "description": "Start playing flattenhund",
       "url": "./index.html",
       "icons": [
         {
