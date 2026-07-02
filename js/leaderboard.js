@@ -246,7 +246,18 @@ async function initLeaderboard() {
     newHighScoreForm = document.getElementById('new-high-score-form');
     playerNameInput = document.getElementById('player-name');
     saveScoreButton = document.getElementById('save-score-button');
-    
+
+    // Wait for the backend connection before checking availability,
+    // otherwise the synchronous isSupabaseAvailable() check below races
+    // the async initialization and wrongly reports offline mode
+    if (window.supabaseHelpers && typeof window.supabaseHelpers.initSupabase === 'function') {
+        try {
+            await window.supabaseHelpers.initSupabase();
+        } catch (error) {
+            console.warn('⚠️ Backend initialization failed during leaderboard init:', error);
+        }
+    }
+
     // Check leaderboard mode - only allow online mode
     const isOnlineMode = window.supabaseHelpers && 
                         window.supabaseHelpers.isSupabaseAvailable &&
