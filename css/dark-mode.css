@@ -36,7 +36,9 @@ body.dark-mode {
     border: 2px solid rgba(255, 255, 255, 0.4);
     border-radius: 0; /* 8-bit style */
     cursor: pointer;
-    z-index: 100;
+    /* Above the game-over overlay (z-index 1000) so the theme can be
+       switched from any screen; below the high-score splash (2000) */
+    z-index: 1500;
     display: flex;
     justify-content: center;
     align-items: center;

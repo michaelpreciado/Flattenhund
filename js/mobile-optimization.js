@@ -314,7 +314,7 @@ class MobileOptimizer {
         // Preload fonts for better performance
         const fontLink = document.createElement('link');
         fontLink.rel = 'preload';
-        fontLink.href = 'assets/fonts/PressStart2P-Regular.ttf';
+        fontLink.href = 'assets/fonts/PressStart2P-Regular.woff2';
         fontLink.as = 'font';
         fontLink.type = 'font/ttf';
         fontLink.crossOrigin = 'anonymous';

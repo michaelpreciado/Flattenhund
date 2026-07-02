@@ -25,3 +25,9 @@ build/
 .idea/
 *.swp
 *.swodo
+
+# Local SQLite database
+data/
+*.db
+*.db-wal
+*.db-shm

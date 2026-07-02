@@ -61,7 +61,7 @@ function updateBirds() {
         }
         
         // Remove if off screen
-        if (bird.x > canvas.width + 20 || bird.x < -20) {
+        if (bird.x > viewW() + 20 || bird.x < -20) {
             birds.splice(i, 1);
         }
     }
@@ -70,8 +70,8 @@ function updateBirds() {
     if (birds.length < MAX_BIRDS && Math.random() < BIRD_SPAWN_CHANCE) {
         // 50% chance to spawn from left or right
         const fromLeft = Math.random() < 0.5;
-        const x = fromLeft ? -20 : canvas.width + 20;
-        const y = 50 + Math.random() * (canvas.height - GROUND_HEIGHT - 100);
+        const x = fromLeft ? -20 : viewW() + 20;
+        const y = 50 + Math.random() * (viewH() - GROUND_HEIGHT - 100);
         const speed = (fromLeft ? 1 : -1) * (0.5 + Math.random() * 1);
         
         birds.push({
@@ -105,15 +105,15 @@ function updateShootingStars() {
         star.life -= 0.02;
         
         // Remove if off screen or dead
-        if (star.x > canvas.width || star.x < 0 || star.y > canvas.height || star.y < 0 || star.life <= 0) {
+        if (star.x > viewW() || star.x < 0 || star.y > viewH() || star.y < 0 || star.life <= 0) {
             shootingStars.splice(i, 1);
         }
     }
     
     // Spawn new shooting stars randomly
     if (shootingStars.length < MAX_SHOOTING_STARS && Math.random() < SHOOTING_STAR_SPAWN_CHANCE) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * (canvas.height / 3); // Only in top third of screen
+        const x = Math.random() * viewW();
+        const y = Math.random() * (viewH() / 3); // Only in top third of screen
         const angle = Math.PI / 4 + Math.random() * (Math.PI / 4); // Angle between 45-90 degrees
         const speed = 2 + Math.random() * 3;
         
@@ -146,7 +146,7 @@ function updateUFOs() {
         }
         
         // Remove if off screen
-        if (ufo.x > canvas.width + 30 || ufo.x < -30) {
+        if (ufo.x > viewW() + 30 || ufo.x < -30) {
             ufos.splice(i, 1);
         }
     }
@@ -155,7 +155,7 @@ function updateUFOs() {
     if (ufos.length < MAX_UFOS && Math.random() < UFO_SPAWN_CHANCE) {
         // Always spawn from left or right edge
         const fromLeft = Math.random() < 0.5;
-        const x = fromLeft ? -30 : canvas.width + 30;
+        const x = fromLeft ? -30 : viewW() + 30;
         const y = 50 + Math.random() * 100; // Only in top portion of screen
         const speed = (fromLeft ? 1 : -1) * (0.3 + Math.random() * 0.5);
         
@@ -209,7 +209,7 @@ function drawScore() {
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '20px PressStart2P';
     ctx.textAlign = 'center';
-    ctx.fillText(score.toString(), canvas.width / 2, 50);
+    ctx.fillText(score.toString(), viewW() / 2, 50);
 }
 
 // Draw birds for day mode

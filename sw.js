@@ -1,7 +1,7 @@
 // Service Worker for Flappy Dog
 // Provides aggressive caching for faster loading and offline gameplay
 
-const CACHE_NAME = 'flappy-dog-v1.2';
+const CACHE_NAME = 'flappy-dog-v2.0';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -16,14 +16,14 @@ const ASSETS_TO_CACHE = [
   '/assets/images/ground.png',
   '/assets/images/pipe-top.png',
   '/assets/images/pipe-bottom.png',
-  '/assets/fonts/PressStart2P-Regular.ttf',
+  '/assets/fonts/PressStart2P-Regular.woff2',
   
   // Critical JavaScript files
   '/js/game.js',
   '/js/drawing-functions.js',
   '/js/config.js',
   '/js/env-loader.js',
-  '/js/supabase.js',
+  '/js/local-db.js',
   
   // Secondary assets (loaded after critical)
   '/js/sounds.js',
