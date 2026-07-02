@@ -51,7 +51,7 @@ let mario = {
     scaleY: 1         // For subtle animation effects
 };
 
-// Supabase session tracking
+// Game session tracking (SQLite backend)
 let currentSession = null;
 
 // Particle system for smoke trail
@@ -432,10 +432,10 @@ async function startGame() {
     
     // Game start setup
     
-    // Create a new game session in Supabase if available
+    // Create a new game session in the database if available
     try {
-        if (window.supabaseHelpers) {
-            currentSession = await window.supabaseHelpers.createGameSession(
+        if (window.gameDB) {
+            currentSession = await window.gameDB.createGameSession(
                 selectedCharacter,
                 isDarkMode
             );
@@ -945,10 +945,10 @@ async function continueGameEnd() {
         highScore = score;
     }
     
-    // Update game session in Supabase if available
+    // Update game session in the database if available
     try {
-        if (window.supabaseHelpers && currentSession) {
-            await window.supabaseHelpers.updateGameSession(
+        if (window.gameDB && currentSession) {
+            await window.gameDB.updateGameSession(
                 currentSession.id,
                 score,
                 mario.boostUsedCount

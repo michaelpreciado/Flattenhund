@@ -1,13 +1,9 @@
 [build]
-  # No build command needed for vanilla JavaScript
-  command = "npm run build:env"
-  
+  # No build step needed for vanilla JavaScript
+  command = ""
+
   # Directory to publish (the root of your project)
   publish = "."
-
-# Build script that creates environment variables file
-[build.environment]
-  NODE_VERSION = "18"
 
 # Security and performance headers
 [[headers]]

@@ -1,41 +1,40 @@
 # Flattenhund
 
-Retro browser game inspired by Flappy Bird, rebuilt with a dog-powered pixel-art vibe, local-friendly setup, and optional online leaderboard support through Supabase.
+Retro browser game inspired by Flappy Bird, rebuilt with a dog-powered pixel-art vibe, a zero-dependency local setup, and a SQLite-backed online leaderboard.
 
 ## Overview
 
-Flattenhund is a lightweight JavaScript canvas game designed to be easy to run, easy to share, and fun to play. It includes character selection, keyboard and touch controls, retro audio, dark mode, service-worker support, and an optional hosted leaderboard.
+Flattenhund is a lightweight JavaScript canvas game designed to be easy to run, easy to share, and fun to play. It includes character selection, keyboard and touch controls, retro audio, dark mode with a parallax night scene, service-worker support, and a leaderboard served by a small built-in Node/SQLite server.
 
 ## Features
 
-- Retro pixel-art browser gameplay
+- Retro pixel-art browser gameplay with parallax day/night scenery
 - Keyboard and touch controls
 - Character selection
-- Local high-score flow
-- Optional Supabase-backed online leaderboard
+- Local high-score flow with persistent nicknames
+- SQLite-backed online leaderboard (zero external services)
 - PWA/service worker support
-- Netlify-friendly deployment setup
-- Lightweight static architecture with no frontend framework required
+- Static-hosting friendly (game runs anywhere; leaderboard needs the Node server)
+- No frontend framework, no npm dependencies
 
 ## Tech Stack
 
 - HTML5 Canvas
 - Vanilla JavaScript
 - CSS
-- Supabase for leaderboard storage
-- Netlify for static deployment
+- Node.js built-in `node:sqlite` for leaderboard storage
+- Vercel/Netlify-compatible static deployment
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3, or any static file server
-- Optional: Supabase project for leaderboard functionality
+- Node.js 22.5+ (for the built-in `node:sqlite` module)
 
 ### Run locally
 
 ```bash
-npm run dev
+npm start
 ```
 
 Then open:
@@ -44,13 +43,16 @@ Then open:
 http://localhost:8000
 ```
 
+This serves the game **and** the leaderboard API from one process. The SQLite
+database is created automatically at `data/flattenhund.db` on first run. See
+[LOCAL_DATABASE.md](LOCAL_DATABASE.md) for the API and schema details.
+
 ## Scripts
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start a local static server on port 8000 |
-| `npm run start` | Same as dev, for simple hosting/testing |
-| `npm run build:env` | Generate deployment environment config |
+| `npm start` / `npm run dev` | Run the game + SQLite leaderboard server on port 8000 |
+| `npm run start:static` | Serve the game only (python static server; leaderboard offline) |
 
 ## Project Structure
 
@@ -58,45 +60,32 @@ http://localhost:8000
 Flattenhund/
 ├── assets/            # Fonts and game assets
 ├── css/               # Stylesheets
-├── js/                # Game logic, config, leaderboard, audio, effects
-├── scripts/           # Small build helpers
+├── js/                # Game logic, leaderboard, audio, effects
+├── server/            # Node/SQLite leaderboard server + schema
 ├── temp/              # Source art/assets used during development
 ├── index.html         # App entry point
 ├── style.css          # Main styling
 ├── manifest.json      # PWA manifest
 ├── sw.js              # Service worker
+├── vercel.json        # Vercel static deployment config
 └── netlify.toml       # Netlify deployment config
 ```
 
-## Leaderboard Setup
+## Leaderboard
 
-Leaderboard support is optional. If Supabase credentials are not configured, the game still runs locally in offline mode.
+The leaderboard is stored in a local SQLite database and served by
+`server/server.js`. There is nothing to configure: no accounts, no API keys,
+no environment variables. Delete the `data/` directory to reset it.
 
-Create environment variables for deployment or local injection:
-
-```bash
-SUPABASE_DATABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_public_anon_key
-```
-
-You can use the included SQL file as a starting point for database setup:
-
-- `database-setup.sql`
+When the game is served without the API (e.g. a static host), leaderboard
+features disable themselves gracefully and gameplay is unaffected.
 
 ## Deployment
 
-This repo is configured to work well as a static deployment target.
-
-### Netlify
-
-1. Connect the repository to Netlify.
-2. Set the required Supabase environment variables if you want the online leaderboard.
-3. Deploy the site.
-
-## Notes
-
-- If Supabase is not configured, online leaderboard actions safely fall back instead of breaking gameplay.
-- Some development/demo files remain in the repo for iteration and testing.
+The game itself is fully static and deploys as-is to Vercel (see
+`vercel.json`) or Netlify. On static hosts the leaderboard runs in offline
+mode; to have a live leaderboard, run `npm start` on any host that can run a
+Node process.
 
 ## License
 

@@ -1,5 +1,5 @@
 // Local development server for Flattenhund
-// Recreates the Supabase backend locally using SQLite (node:sqlite, zero dependencies).
+// SQLite-backed game server (node:sqlite, zero dependencies).
 //
 // Serves the static game files AND a small JSON API that js/local-db.js talks to:
 //   GET    /api/health          - availability check
@@ -102,7 +102,7 @@ function isValidScore(value) {
 }
 
 // ---------------------------------------------------------------------------
-// API routes (mirror the operations in js/supabase.js)
+// API routes (consumed by js/local-db.js)
 // ---------------------------------------------------------------------------
 
 async function handleApi(req, res, url) {
@@ -124,7 +124,7 @@ async function handleApi(req, res, url) {
   }
 
   // POST /api/scores { name, score, character }
-  // Same duplicate-prevention logic as saveScore() in js/supabase.js:
+  // Duplicate prevention:
   // one row per player name, only updated when the new score is higher.
   if (req.method === 'POST' && pathname === '/api/scores') {
     const body = await readJsonBody(req);

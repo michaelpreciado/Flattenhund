@@ -223,7 +223,7 @@ function getPlayerNickname() {
     return sanitizePlayerName(playerData.nickname) || 'PLAYER';
 }
 
-// Dummy leaderboard data has been removed to prioritize Supabase.
+// Leaderboard data comes exclusively from the SQLite backend.
 
 // Initialize leaderboard
 let leaderboard = [];
@@ -248,20 +248,20 @@ async function initLeaderboard() {
     saveScoreButton = document.getElementById('save-score-button');
 
     // Wait for the backend connection before checking availability,
-    // otherwise the synchronous isSupabaseAvailable() check below races
+    // otherwise the synchronous isAvailable() check below races
     // the async initialization and wrongly reports offline mode
-    if (window.supabaseHelpers && typeof window.supabaseHelpers.initSupabase === 'function') {
+    if (window.gameDB && typeof window.gameDB.init === 'function') {
         try {
-            await window.supabaseHelpers.initSupabase();
+            await window.gameDB.init();
         } catch (error) {
             console.warn('⚠️ Backend initialization failed during leaderboard init:', error);
         }
     }
 
     // Check leaderboard mode - only allow online mode
-    const isOnlineMode = window.supabaseHelpers && 
-                        window.supabaseHelpers.isSupabaseAvailable &&
-                        window.supabaseHelpers.isSupabaseAvailable();
+    const isOnlineMode = window.gameDB && 
+                        window.gameDB.isAvailable &&
+                        window.gameDB.isAvailable();
     
     if (isOnlineMode) {
         console.log('🌐 Leaderboard: Online mode - scores will be saved to cloud database');
@@ -400,41 +400,41 @@ async function initLeaderboard() {
     console.log('✅ Leaderboard initialized successfully');
 }
 
-// Load leaderboard exclusively from Supabase (online-only mode)
+// Load leaderboard exclusively from the database (online-only mode)
 async function loadLeaderboard() {
-    console.log('Loading leaderboard from Supabase (online-only mode)...');
-    leaderboard = []; // Default to empty if Supabase is not available
+    console.log('Loading leaderboard from the database (online-only mode)...');
+    leaderboard = []; // Default to empty if the database is not available
     
     try {
-        // Only try to load from Supabase - no localStorage fallback
-        if (window.supabaseHelpers && 
-            typeof window.supabaseHelpers.getLeaderboard === 'function' &&
-            window.supabaseHelpers.isSupabaseAvailable()) {
+        // Only try to load from the database - no localStorage fallback
+        if (window.gameDB && 
+            typeof window.gameDB.getLeaderboard === 'function' &&
+            window.gameDB.isAvailable()) {
             
-            console.log('Supabase helpers available, fetching leaderboard...');
-            const supabaseData = await window.supabaseHelpers.getLeaderboard(10);
-            console.log('Supabase leaderboard data received:', supabaseData);
+            console.log('Database client available, fetching leaderboard...');
+            const dbData = await window.gameDB.getLeaderboard(10);
+            console.log('Leaderboard data received:', dbData);
             
-            if (Array.isArray(supabaseData) && supabaseData.length > 0) {
-                leaderboard = supabaseData; 
-                console.log(`✅ Loaded ${leaderboard.length} leaderboard entries from Supabase`);
+            if (Array.isArray(dbData) && dbData.length > 0) {
+                leaderboard = dbData; 
+                console.log(`✅ Loaded ${leaderboard.length} leaderboard entries from the database`);
                 return leaderboard;
-            } else if (Array.isArray(supabaseData) && supabaseData.length === 0) {
-                console.log("Supabase returned empty leaderboard - no scores yet");
+            } else if (Array.isArray(dbData) && dbData.length === 0) {
+                console.log("Database returned empty leaderboard - no scores yet");
                 leaderboard = [];
                 return leaderboard;
             } else {
-                console.warn("Supabase data was not valid");
+                console.warn("Leaderboard data was not valid");
             }
         } else {
-            console.warn("Supabase not configured - leaderboard disabled in online-only mode");
+            console.warn("Database server not reachable - leaderboard disabled in online-only mode");
         }
         
         console.log("No leaderboard data available - online mode required");
         leaderboard = [];
         
     } catch (err) {
-        console.error('Error loading leaderboard from Supabase:', err);
+        console.error('Error loading leaderboard from the database:', err);
         leaderboard = [];
     }
     
@@ -474,9 +474,9 @@ function actuallyRenderLeaderboard() {
         }
         
         // Check online status for UI indicators
-        const isOnline = window.supabaseHelpers && 
-                        window.supabaseHelpers.isSupabaseAvailable &&
-                        window.supabaseHelpers.isSupabaseAvailable();
+        const isOnline = window.gameDB && 
+                        window.gameDB.isAvailable &&
+                        window.gameDB.isAvailable();
         
         // Update leaderboard title with online status
         const leaderboardTitle = document.querySelector('.leaderboard-title');
@@ -568,9 +568,9 @@ function checkAndPromptForPersonalBest(currentScore) {
         }
         
         // Check if online mode is available
-        const isOnline = window.supabaseHelpers && 
-                        window.supabaseHelpers.isSupabaseAvailable &&
-                        window.supabaseHelpers.isSupabaseAvailable();
+        const isOnline = window.gameDB && 
+                        window.gameDB.isAvailable &&
+                        window.gameDB.isAvailable();
         
         if (!isOnline) {
             console.log('❌ Online mode not available - high score saving disabled');
@@ -736,13 +736,13 @@ async function autoSavePlayerScore(nickname, highestScore) {
     console.log(`🤖 Auto-saving score for returning player: ${safeName} - ${highestScore} (${character})`);
     
     try {
-        // Check if Supabase is available
-        if (!window.supabaseHelpers || !window.supabaseHelpers.isSupabaseAvailable()) {
-            console.warn('⚠️ Supabase not available for auto-save');
+        // Check if the database is available
+        if (!window.gameDB || !window.gameDB.isAvailable()) {
+            console.warn('⚠️ Database not available for auto-save');
             return false;
         }
         
-        const saveResult = await window.supabaseHelpers.saveScore(safeName, highestScore, character);
+        const saveResult = await window.gameDB.saveScore(safeName, highestScore, character);
         
         if (saveResult) {
             console.log("✅ Auto-save successful for returning player");
@@ -799,25 +799,25 @@ async function saveHighScore() {
     playerNameInput.disabled = true;
 
     try {
-        // Check if Supabase is configured and available
-        if (!window.supabaseHelpers) {
-            throw new Error('Supabase helpers not available - online connection required');
+        // Check if the database client is available
+        if (!window.gameDB) {
+            throw new Error('Database client not available - online connection required');
         }
         
-        if (typeof window.supabaseHelpers.saveScore !== 'function') {
+        if (typeof window.gameDB.saveScore !== 'function') {
             throw new Error('Save score function not available - online connection required');
         }
         
-        // Check if Supabase is properly initialized
-        if (!window.supabaseHelpers.isSupabaseAvailable()) {
-            throw new Error('Supabase not configured - online connection required');
+        // Check if the database connection is up
+        if (!window.gameDB.isAvailable()) {
+            throw new Error('Database server not reachable - online connection required');
         }
 
-        console.log(`Attempting to save to Supabase: ${playerName}, ${highestScore}, ${character}`);
-        const saveResult = await window.supabaseHelpers.saveScore(playerName, highestScore, character);
+        console.log(`Attempting to save score: ${playerName}, ${highestScore}, ${character}`);
+        const saveResult = await window.gameDB.saveScore(playerName, highestScore, character);
         
         if (saveResult) {
-            console.log("✅ Score saved to Supabase successfully.");
+            console.log("✅ Score saved to the database successfully.");
             
             // Show success feedback
             saveScoreButton.textContent = 'SAVED!';
@@ -839,7 +839,7 @@ async function saveHighScore() {
             throw new Error('Save operation failed - online connection required');
         }
     } catch (err) {
-        console.error('Error saving score to Supabase:', err);
+        console.error('Error saving score to the database:', err);
         
         // Show error message for online-only mode
         let errorMessage = 'ONLINE REQUIRED';
@@ -943,30 +943,30 @@ async function refreshLeaderboard() {
     }
 }
 
-// Test Supabase connection for debugging
-async function testSupabaseConnection() {
-    console.log('Testing Supabase connection...');
+// Test database connection for debugging
+async function testDatabaseConnection() {
+    console.log('Testing database connection...');
     try {
-        if (!window.supabaseHelpers) {
-            console.error('❌ Supabase helpers not available');
+        if (!window.gameDB) {
+            console.error('❌ Database client not available');
             return false;
         }
         
-        console.log('✅ Supabase helpers available');
+        console.log('✅ Database client available');
         
-        if (typeof window.supabaseHelpers.getLeaderboard !== 'function') {
+        if (typeof window.gameDB.getLeaderboard !== 'function') {
             console.error('❌ getLeaderboard function not available');
             return false;
         }
         
         console.log('✅ getLeaderboard function available');
         
-        const testData = await window.supabaseHelpers.getLeaderboard(5);
+        const testData = await window.gameDB.getLeaderboard(5);
         console.log('✅ Successfully fetched test data:', testData);
         
         return true;
     } catch (error) {
-        console.error('❌ Error testing Supabase connection:', error);
+        console.error('❌ Error testing database connection:', error);
         return false;
     }
 }
@@ -987,7 +987,7 @@ function updateGameHighScoreDisplay() {
 // Expose functions globally for debugging AND for game integration
 window.leaderboardDebug = {
     refreshLeaderboard,
-    testSupabaseConnection,
+    testDatabaseConnection,
     getCurrentLeaderboard: () => leaderboard,
     renderLeaderboard,
     loadLeaderboard,
@@ -1008,9 +1008,9 @@ window.leaderboardDebug = {
     },
     // Check current mode (always online-only now)
     getMode: () => {
-        const isOnline = window.supabaseHelpers && 
-                        window.supabaseHelpers.isSupabaseAvailable &&
-                        window.supabaseHelpers.isSupabaseAvailable();
+        const isOnline = window.gameDB && 
+                        window.gameDB.isAvailable &&
+                        window.gameDB.isAvailable();
         return isOnline ? 'online' : 'offline-leaderboard-disabled';
     },
     // Show status
@@ -1041,7 +1041,7 @@ window.leaderboardDebug = {
 console.log('🎮 Leaderboard Debug Commands Available (Online-Only Mode):');
 console.log('  window.leaderboardDebug.showStatus() - Show current online/offline status');
 console.log('  window.leaderboardDebug.getMode() - Check connection status');
-console.log('  window.leaderboardDebug.testSupabaseConnection() - Test Supabase connection');
+console.log('  window.leaderboardDebug.testDatabaseConnection() - Test database connection');
 console.log('🌐 NOTE: Leaderboard requires internet connection - no offline fallback');
 
 // Export main functions for other scripts

@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "A Flappy Bird-style game with retro pixel art",
   "scripts": {
-    "build:env": "node scripts/build-env.js",
     "start": "node server/server.js",
     "dev": "node server/server.js",
     "start:static": "python3 -m http.server 8000"

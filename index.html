@@ -86,20 +86,9 @@
         </button>
     </div>
     
-    <!-- Environment and configuration scripts (load first) -->
-    <script src="js/netlify-env.js"></script>
-    <script src="js/env-loader.js"></script>
-    <script src="js/config.js"></script>
-    
-    <!-- Local SQLite backend integration (replaces the Supabase cloud backend).
-         To switch back to Supabase, restore:
-         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-         <script src="js/supabase.js"></script> -->
+    <!-- Leaderboard backend client (talks to the local SQLite server) -->
     <script src="js/local-db.js"></script>
-    
-    <!-- Console helpers for debugging -->
-    <script src="js/console-helpers.js"></script>
-    
+
     <!-- 8-bit sound system -->
     <script src="js/sounds.js"></script>
     <script src="js/8bit-music.js"></script>

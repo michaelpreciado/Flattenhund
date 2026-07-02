@@ -1,7 +1,6 @@
-// Local SQLite backend integration for Flattenhund
-// Drop-in replacement for js/supabase.js: exposes the exact same
-// window.supabaseHelpers interface, but talks to the local Node/SQLite
-// server (server/server.js) instead of the Supabase cloud.
+// Leaderboard backend client for Flattenhund
+// Talks to the local Node/SQLite server (server/server.js) and exposes the
+// window.gameDB interface used by leaderboard.js and game.js.
 
 let isInitialized = false;
 let initializationPromise = null;
@@ -11,7 +10,7 @@ const API_BASE = '/api';
 /**
  * Initialize the local backend connection (pings the health endpoint)
  */
-async function initSupabase() {
+async function initBackend() {
   // Return existing promise if already initializing
   if (initializationPromise) {
     return initializationPromise;
@@ -50,7 +49,7 @@ async function initSupabase() {
 // Helper function to ensure the backend is initialized before use
 async function ensureInitialized() {
   if (!isInitialized) {
-    await initSupabase();
+    await initBackend();
   }
   return isInitialized;
 }
@@ -157,22 +156,21 @@ async function updateGameSession(sessionId, score, boostUsedCount) {
 }
 
 // Check if the backend features are available
-function isSupabaseAvailable() {
+function isAvailable() {
   return isInitialized;
 }
 
-// Make functions available globally under the same name the rest of the
-// game code (leaderboard.js, game.js) already uses
-window.supabaseHelpers = {
+// Make functions available globally for leaderboard.js and game.js
+window.gameDB = {
   getLeaderboard,
   saveScore,
   createGameSession,
   updateGameSession,
-  isSupabaseAvailable,
-  initSupabase
+  isAvailable,
+  init: initBackend
 };
 
 // Initialize when the script loads, but don't block if it fails
-initSupabase().catch(error => {
+initBackend().catch(error => {
   console.warn('⚠️ Local database initialization failed, continuing in offline mode:', error);
 });
