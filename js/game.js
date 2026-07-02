@@ -139,8 +139,9 @@ function init() {
         window.eightBitAudio.enableMusic(false);
     }
     
-    // Ground position
-    ground.y = canvas.height - GROUND_HEIGHT;
+    // Ground position is set by resizeCanvas() in CSS pixels; recomputing it
+    // here from canvas.height (device pixels) pushed the ground off-screen
+    // on high-DPR displays.
     
     // Load high score from new persistent player data system
     // This will be updated by the leaderboard system when it loads
@@ -224,6 +225,11 @@ function init() {
     // Expose theme update function for dark-mode.js
     window.updateGameTheme = function(darkModeEnabled) {
         isDarkMode = darkModeEnabled;
+        // The game loop only runs during play; repaint immediately so the
+        // menu/game-over background switches theme too
+        if (!gameStarted || gameOver) {
+            render();
+        }
     };
     
     // Initialize leaderboard system
@@ -232,6 +238,16 @@ function init() {
             console.warn('⚠️ Leaderboard initialization failed:', error);
         });
     }
+
+    // Ambient background animation for the menu and game-over screens.
+    // The main gameLoop renders during play; this keeps clouds drifting and
+    // stars twinkling the rest of the time (cheap guard when playing).
+    requestAnimationFrame(function ambientLoop() {
+        if (!gameStarted || gameOver) {
+            render();
+        }
+        requestAnimationFrame(ambientLoop);
+    });
 }
 
 // Function to handle canvas resizing
@@ -668,9 +684,9 @@ function update(deltaTime) {
     // This ensures drag is consistent regardless of frame rate.
     mario.velocityX *= Math.pow(FORWARD_DRAG_FACTOR, 60 * deltaTime);
     
-    // Keep character within reasonable bounds
+    // Keep character within reasonable bounds (CSS pixel space)
     const minX = 40;
-    const maxX = canvas.width / 3;
+    const maxX = (canvas.width / currentDpr) / 3;
     if (mario.x < minX) {
         mario.x = minX;
         mario.velocityX = 0;
@@ -765,49 +781,22 @@ function render() {
     
     // Draw pipes
     drawPipes();
-    
-    // Draw a thin border where city meets ground (only if needed)
-    ctx.fillStyle = isDarkMode ? '#1A4020' : '#8CC312';
-    ctx.fillRect(0, ground.y - 1, canvas.width, 1);
-    
-    // PERFORMANCE OPTIMIZATION: Only draw velocity indicator if game is active
-    if (gameStarted && !gameOver) {
-        // Simplified velocity indicator with fewer operations
-        const indicatorX = 30;
-        const indicatorY = 100;
-        const indicatorHeight = 100;
-        const indicatorWidth = 8;
-        
-        // Background bar
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.fillRect(indicatorX, indicatorY, indicatorWidth, indicatorHeight);
-        
-        // Velocity indicator (simplified calculation)
-        const clampedVelocity = Math.max(0, Math.min(1, (mario.velocity + 8) / 16));
-        const velocityHeight = indicatorHeight * clampedVelocity;
-        
-        // Simplified color logic
-        ctx.fillStyle = mario.velocity < -2 ? '#50C878' : mario.velocity < 2 ? '#FFD700' : '#FF6347';
-        ctx.fillRect(indicatorX, indicatorY + indicatorHeight - velocityHeight, indicatorWidth, velocityHeight);
-    }
-    
-    // Draw the ground
+
+    // Draw the ground (textured, scrolls with the world)
     drawGround();
-    
-    if (qualityLevel !== 'low') {
-        ctx.fillStyle = '#A2D65B';
-        for (let x = 0; x < canvas.width; x += 16) {
-            const grassHeight = 4 + (x % 32 === 0 ? 4 : 0);
-            ctx.fillRect(x, ground.y - grassHeight, 8, grassHeight);
-        }
-    }
-    
+
     // Render smoke trail particles behind character
     renderParticles();
-    
+
+    // On the start menu the character hasn't launched yet - don't draw the
+    // sprite floating over the menu text
+    if (!gameStarted && !gameOver) {
+        return;
+    }
+
     // PERFORMANCE OPTIMIZATION: Streamlined character rendering
     const charSprite = getCurrentCharacterSprite();
-    
+
     ctx.save();
     
     // Move to character position and apply rotation
@@ -844,37 +833,31 @@ function render() {
     );
     
     ctx.restore();
-    
-    // PERFORMANCE OPTIMIZATION: Simplified score rendering
-    const scoreText = score.toString();
-    const scoreWidth = scoreText.length * 20 + 20;
-    
-    // Score box
-    ctx.fillStyle = COLORS_8BIT.scoreBox;
-    ctx.fillRect((canvas.width - scoreWidth) / 2, 20, scoreWidth, 40);
-    
-    // Score border
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2;
-    ctx.strokeRect((canvas.width - scoreWidth) / 2, 20, scoreWidth, 40);
-    
-    // Score text
-    ctx.font = 'bold 22px PressStart2P, monospace';
-    ctx.fillStyle = '#FFFFFF';
-    ctx.textAlign = 'center';
-    ctx.fillText(scoreText, canvas.width / 2, 48);
+
+    // The score HUD is a DOM element (.score-display); no canvas score box
+    // needed here — drawing both stacked two boxes on top of each other.
 }
 
 // Spawn a new pipe
 function spawnPipe() {
+    // IMPORTANT: all gameplay geometry is in CSS pixels (the ctx transform
+    // maps CSS px -> device px). canvas.width/height are device pixels, so
+    // using them here put pipe gaps below the ground on high-DPR phones.
+    const viewWidth = canvas.width / currentDpr;
+    const viewHeight = canvas.height / currentDpr;
+
+    // Progressive difficulty: a generous gap for the first pipes that
+    // tightens to PIPE_GAP by ~10 points
+    const gap = PIPE_GAP + Math.max(0, 60 - score * 6);
+
     const pipeWidth = 90; // Wider pipes for better visibility
     const minHeight = 80; // Taller minimum pipe height
-    const maxHeight = canvas.height - PIPE_GAP - minHeight - GROUND_HEIGHT;
+    const maxHeight = viewHeight - gap - minHeight - GROUND_HEIGHT;
     const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
-    const bottomY = topHeight + PIPE_GAP;
-    
+    const bottomY = topHeight + gap;
+
     pipes.push({
-        x: canvas.width,
+        x: viewWidth,
         width: pipeWidth,
         top: {
             y: 0,
@@ -883,7 +866,7 @@ function spawnPipe() {
         },
         bottom: {
             y: bottomY,
-            height: canvas.height - bottomY,
+            height: viewHeight - bottomY,
             width: pipeWidth
         },
         passed: false

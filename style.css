@@ -1,6 +1,6 @@
 @font-face {
     font-family: 'PressStart2P';
-    src: url('assets/fonts/PressStart2P-Regular.ttf') format('truetype');
+    src: url('assets/fonts/PressStart2P-Regular.woff2') format('woff2');
     font-weight: normal;
     font-style: normal;
 }
@@ -49,8 +49,8 @@ img.character-img {
     image-rendering: -moz-crisp-edges;
     image-rendering: crisp-edges;
     image-rendering: pixelated;
-    width: 48px;
-    height: 48px;
+    width: 64px;
+    height: 64px;
     border: none; /* Remove the border that was causing white lines */
     background: transparent;
     margin-bottom: 4px;
@@ -186,7 +186,9 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
+    /* Vignette instead of a flat black wash: keeps the scenery visible */
+    background:
+        radial-gradient(ellipse at 50% 38%, rgba(10, 16, 44, 0.35) 0%, rgba(8, 12, 36, 0.62) 62%, rgba(4, 6, 20, 0.85) 100%);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -205,7 +207,8 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.9);
+    background:
+        radial-gradient(ellipse at 50% 34%, rgba(30, 4, 8, 0.45) 0%, rgba(12, 4, 10, 0.72) 60%, rgba(2, 2, 8, 0.9) 100%);
     display: none;
     flex-direction: column;
     justify-content: center;
@@ -432,7 +435,9 @@ h1, h2 {
 
 /* Special styling for the FLATTERHUND title */
 .start-screen h1 {
-    font-size: 3.2rem;
+    /* Press Start 2P glyphs are a full em wide: size against the viewport
+       so the 11-character title never overflows on phones */
+    font-size: clamp(1rem, 5.2vw, 2.4rem);
     color: #FFFFFF;
     text-shadow: 
         /* Clean 3D shadow for depth */
@@ -442,15 +447,16 @@ h1, h2 {
         /* Subtle glow for visibility */
         0 0 8px #1E90FF,
         0 0 16px #1E90FF;
-    letter-spacing: 4px;
+    letter-spacing: 2px;
     text-transform: uppercase;
     /* Pixelated text effect */
     image-rendering: pixelated;
     /* Clean border for definition */
     -webkit-text-stroke: 1px #1E90FF;
     /* Container styling */
-    padding: 20px 30px;
+    padding: 18px 20px;
     margin-bottom: 30px;
+    max-width: 94vw;
     /* Clean background */
     background: 
         linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(0,17,34,0.8) 50%, rgba(0,0,0,0.8) 100%);
@@ -698,20 +704,27 @@ h2 {
 
 /* Leaderboard Styles */
 .leaderboard-container {
-    width: 80%;
-    margin: 10px auto 0;
-    background-color: rgba(0, 0, 0, 0.7);
-    border: 2px solid #FFFFFF;
+    width: 84%;
+    max-width: 420px;
+    margin: 12px auto 0;
+    background: linear-gradient(180deg, rgba(6, 12, 30, 0.85), rgba(6, 12, 30, 0.7));
+    border: 2px solid rgba(78, 192, 202, 0.8);
     border-radius: 0; /* 8-bit style */
-    padding: 5px;
+    padding: 8px;
+    box-shadow:
+        4px 4px 0 rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 0 24px rgba(78, 192, 202, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 .leaderboard-title {
-    color: #FFFFFF;
+    color: #4EC0CA;
     font-size: 0.9rem;
     text-align: center;
-    margin-bottom: 5px;
-    text-shadow: 1px 1px 0 #000;
+    margin-bottom: 6px;
+    text-shadow: 1px 1px 0 #000, 0 0 12px rgba(78, 192, 202, 0.6);
 }
 
 .leaderboard {
@@ -721,18 +734,46 @@ h2 {
 
 .leaderboard-row {
     display: flex;
-    padding: 3px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+#leaderboard-entries .leaderboard-row:nth-child(odd) {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Medal colors for the podium */
+#leaderboard-entries .leaderboard-row:nth-child(1) .rank,
+#leaderboard-entries .leaderboard-row:nth-child(1) .name,
+#leaderboard-entries .leaderboard-row:nth-child(1) .score {
+    color: #FFD700;
+    text-shadow: 1px 1px 0 #000, 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+#leaderboard-entries .leaderboard-row:nth-child(2) .rank,
+#leaderboard-entries .leaderboard-row:nth-child(2) .name,
+#leaderboard-entries .leaderboard-row:nth-child(2) .score {
+    color: #C0C0C0;
+    text-shadow: 1px 1px 0 #000, 0 0 8px rgba(192, 192, 192, 0.4);
+}
+
+#leaderboard-entries .leaderboard-row:nth-child(3) .rank,
+#leaderboard-entries .leaderboard-row:nth-child(3) .name,
+#leaderboard-entries .leaderboard-row:nth-child(3) .score {
+    color: #CD7F32;
+    text-shadow: 1px 1px 0 #000, 0 0 8px rgba(205, 127, 50, 0.4);
 }
 
 .leaderboard-row.header {
-    border-bottom: 2px solid #FFFFFF;
+    border-bottom: 2px solid rgba(78, 192, 202, 0.8);
     font-weight: bold;
     font-size: 0.6rem;
+    color: #9ADCE2;
 }
 
 .leaderboard-row div {
-    padding: 1px 2px;
+    padding: 2px;
     text-align: center;
     font-size: 0.6rem;
 }
@@ -821,7 +862,8 @@ h2 {
 
 p {
     margin-bottom: 20px;
-    font-size: 1.2rem;
+    font-size: clamp(0.65rem, 2.6vw, 0.95rem);
+    line-height: 1.7;
 }
 
 /* Button styles with liquid glass effect */
@@ -899,17 +941,25 @@ button:hover {
     justify-content: center;
 }
 
-.score {
-    background-color: #333333;
-    padding: 10px 20px;
+.score-display .score {
+    background: linear-gradient(180deg, rgba(8, 12, 32, 0.72), rgba(8, 12, 32, 0.55));
+    padding: 12px 22px;
     border-radius: 0;
     font-size: 1.5rem;
     font-weight: bold;
-    color: #FF6600;
-    border: 2px solid #000;
-    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
-    text-shadow: 2px 2px 0 #000;
+    color: #FFD800;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    box-shadow:
+        3px 3px 0 rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        0 0 18px rgba(255, 216, 0, 0.18);
+    text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255, 216, 0, 0.5);
     image-rendering: pixelated;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    min-width: 76px;
+    width: auto;      /* the generic .score leaderboard rule sets 30% */
+    text-align: center;
 }
 
 /* Responsive design for smaller screens */
@@ -922,19 +972,19 @@ button:hover {
     }
     
     h1 {
-        font-size: 2rem;
+        font-size: clamp(0.9rem, 5vw, 1.4rem);
     }
-    
+
     h2 {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
     }
-    
+
     p {
-        font-size: 1rem;
+        font-size: 0.7rem;
     }
-    
+
     button {
-        font-size: 1rem;
+        font-size: 0.9rem;
     }
 }
 
