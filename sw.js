@@ -1,7 +1,7 @@
 // Service Worker for Flappy Dog
 // Provides aggressive caching for faster loading and offline gameplay
 
-const CACHE_NAME = 'flappy-dog-v2.0';
+const CACHE_NAME = 'flappy-dog-v2.1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -21,8 +21,6 @@ const ASSETS_TO_CACHE = [
   // Critical JavaScript files
   '/js/game.js',
   '/js/drawing-functions.js',
-  '/js/config.js',
-  '/js/env-loader.js',
   '/js/local-db.js',
   
   // Secondary assets (loaded after critical)
@@ -83,10 +81,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Skip external requests (except Supabase CDN)
+  // Skip external requests and the leaderboard API (always live, never cached)
   const url = new URL(event.request.url);
-  if (url.origin !== location.origin && !url.origin.includes('supabase')) {
-    // Let external CDN requests (like Supabase) go through normally
+  if (url.origin !== location.origin || url.pathname.startsWith('/api/')) {
     return;
   }
   

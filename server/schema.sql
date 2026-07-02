@@ -1,7 +1,7 @@
--- SQLite schema for Flattenhund (local recreation of database-setup.sql)
+-- SQLite schema for Flattenhund
 -- Applied automatically by server/server.js on startup.
 
--- Create leaderboard table (mirrors the Supabase Postgres table)
+-- Create leaderboard table
 CREATE TABLE IF NOT EXISTS leaderboard (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL CHECK (length(name) <= 10),

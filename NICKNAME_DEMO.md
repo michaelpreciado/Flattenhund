@@ -59,7 +59,7 @@ window.leaderboardDebug.getPlayerNickname();
 ```javascript
 // Available debug functions
 window.leaderboardDebug.refreshLeaderboard();     // Refresh leaderboard
-window.leaderboardDebug.testSupabaseConnection(); // Test database connection
+window.leaderboardDebug.testDatabaseConnection(); // Test database connection
 window.leaderboardDebug.updateGameHighScoreDisplay(); // Update high score display
 window.leaderboardDebug.clearPlayerData();        // Reset to first-time player
 ```
@@ -83,7 +83,7 @@ window.leaderboardDebug.clearPlayerData();        // Reset to first-time player
 - **Data Storage**: `localStorage` with key `'flattenhundPlayerData'`
 - **Score Logic**: Always submit highest score achieved
 - **Auto-save**: Happens automatically for returning players
-- **Fallback**: Works even if Supabase is temporarily unavailable
+- **Fallback**: Works even if the database server is temporarily unavailable
 - **Cross-session**: Persists across browser restarts
 
 This system creates a smooth, user-friendly experience that encourages players to save their scores while maintaining a high-quality leaderboard! 🏆 
